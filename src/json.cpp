@@ -1,4 +1,6 @@
 #include <cassert>
+#include <cfenv>
+#include <charconv>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -16,14 +18,14 @@ void Json::line_err(){
     while(ln_start >= 0 && buffer[ln_start] != '\n'){
         ln_start--;
     }
-    while(ln_end < buffer.size() && buffer[ln_end] != '\n'){
+    while(ln_end < (int)buffer.size() && buffer[ln_end] != '\n'){
         ln_end++;
     }
 
     std::cout << buffer.substr(ln_start + 1, (ln_end - ln_start));
 
     // point to the exact symbol that caused the issue
-    for(int i = ln_start + 1; i < current; ++i){
+    for(int i = ln_start + 1; i < (int)current; ++i){
         std::cout << " ";
     }
     std::cout << "^";
@@ -206,8 +208,29 @@ bool Json::match_null(){
     return false;
 }
 
+// If false is returned, number is undefined
 bool Json::match_number(double& number){
-    
+    // We can't use strtod and friends because they don't
+    // conform to the json definition of a number, but
+    // from_chars does. Also, see Notes section in
+    // https://en.cppreference.com/w/cpp/utility/from_chars
+
+    const char* cbuff = buffer.c_str();
+    // We give it the whole rest of the buffer, it will only care about the initial valid part
+    auto [ptr, ec] = std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
+
+    if(ec == std::errc::invalid_argument){
+        // no number at that location
+        return false;
+    }
+
+    if(ec == std::errc::result_out_of_range){
+        load_err("number out of range");
+    }
+
+    // valid number!
+    current = ptr - cbuff;
+    return true;
 }
 
 // should error out if there is nothing to load
@@ -231,10 +254,10 @@ Structure Json::load_value(){
         if(match_null()){
             return Structure(Literal(LiteralType::NULLVAL));
         }
-        // double number;
-        // if(match_number(number)){
-        //     return Structure(number);
-        // }
+        double number;
+        if(match_number(number)){
+            return Structure(number);
+        }
 
         load_err("unexpected symbol for value");
         break;
