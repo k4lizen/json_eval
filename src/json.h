@@ -1,10 +1,17 @@
 #pragma once
 
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
 
+
+class JsonLoadErr : public std::runtime_error {
+public:
+	JsonLoadErr(const std::string& msg)
+		: std::runtime_error(msg) {}
+};
 
 enum class LiteralType {
 	INVALID = 0,
@@ -78,8 +85,8 @@ private:
 	unsigned int start = 0;     // start of token being parsed 
 	Structure root;         // the deserialized json
 
-	void load_err(std::string);
-	void line_err();
+	[[noreturn]] void load_err(std::string);
+	std::string error_line();
 	Structure load();
 
 	char peek();

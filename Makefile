@@ -1,7 +1,7 @@
 appname := json_eval
 
 CXX := g++
-CXXFLAGS := -std=c++20 -Wall -Wextra -DNDEBUG
+CXXFLAGS := -std=c++20 -Wall -Wextra -g
 
 srcfiles := $(shell find . -name "*.cpp")
 objects  := $(patsubst %.cpp, %.o, $(srcfiles))

@@ -10,8 +10,10 @@ bool is_whitespace(char c){
     return c == ' ' || c == '\n' || c == '\t' || c == '\r'; 
 }
 
-// print the line with the error
-void Json::line_err(){
+// return a description of the location of the error
+std::string Json::error_line(){
+    std::string desc = "line: " + std::to_string(line) + '\n';
+    
     int ln_start, ln_end;
     ln_start = ln_end = current;
     while(ln_start >= 0 && buffer[ln_start] != '\n'){
@@ -21,25 +23,27 @@ void Json::line_err(){
         ln_end++;
     }
 
-    std::cout << buffer.substr(ln_start + 1, (ln_end - ln_start));
+    // return the line which caused the issue
+    desc += buffer.substr(ln_start + 1, (ln_end - ln_start));
 
-    // point to the exact symbol that caused the issue
+    // point to the exact problematic symbol
     for(int i = ln_start + 1; i < static_cast<int>(current); ++i){
-        std::cout << " ";
+        desc += ' ';
     }
-    std::cout << "^";
+    desc += '^';
     for(int i = 0; i < 10; ++i){
-        std::cout << "~";
+        desc += '~';
     }
-    std::cout << std::endl;
+    desc += '\n';
     
+    return desc;
 }
 
-void Json::load_err(std::string msg){
-    std::cerr << "Load Error: " << msg << std::endl;
-    std::cerr << "line: " << line << std::endl;
-    line_err();
-    exit(1);
+[[noreturn]] void Json::load_err(std::string msg){
+    std::string err_msg =  "Load Error: " + msg + '\n';
+    err_msg += error_line();
+
+    throw JsonLoadErr(err_msg);
 }
 
 Json::Json(std::string file_name){
@@ -286,12 +290,11 @@ Structure Json::load_value(){
         }
 
         load_err("unexpected symbol for value");
-        break;
     }
 }
 
 KeyedStructure Json::load_pair(){
-    assert(peek() == '"'); // cannot match('"') since load_string() expects it
+    assert(peek() == '"');
 
     std::string key = load_string();
     skip();
