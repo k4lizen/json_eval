@@ -1,4 +1,13 @@
 {
-  "mama mia": "papa luigi",
-  "is cooking": "something",
+  "mama mia": {
+    "this is": "pretty cool",
+    "nya": { "awa": "peko" },
+    "key": {
+      "a": true,
+      "b": false,
+      "c": null
+    }
+    
+  },
+  "is cooking": "something"
 }

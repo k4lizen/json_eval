@@ -81,24 +81,19 @@ void Json::skip(){
     }
 }
 
-void Structure::add(std::string key, Structure child){
+void Structure::array_add(Structure elem){
+    assert(tag == StructureType::ARRAY);
+    std::get<StructureArray>(val).push_back(elem);
+}
+
+void Structure::obj_add(std::string key, Structure child){
     assert(tag == StructureType::OBJECT);
-    std::get<std::map<std::string, Structure>>(val)[key] = child;
+    std::get<StructureMap>(val)[key] = child;
 }
 
-void Structure::add(KeyedStructure key_val){
+void Structure::obj_add(KeyedStructure key_val){
     assert(tag == StructureType::OBJECT);
-    std::get<std::map<std::string, Structure>>(val)[key_val.first] = key_val.second;
-}
-
-void Structure::set(std::string str){
-    assert(tag == StructureType::LITERAL);
-    std::get<Literal>(val).set_string(str);
-}
-
-void Literal::set_string(std::string str){
-    tag = LiteralType::STRING;
-    val = str;
+    std::get<StructureMap>(val)[key_val.first] = key_val.second;
 }
 
 char get_escaped(){
@@ -132,10 +127,66 @@ std::string Json::load_string(){
     load_err("unterminated string");    
 }
 
+bool is_end_control(char c){
+    return c == ',' || c == '}' || c == ']';
+}
+
+bool Json::match_false(){
+    if(current + 5 < buffer.size() &&
+        buffer[current]     == 'f' &&
+        buffer[current + 1] == 'a' &&
+        buffer[current + 2] == 'l' &&
+        buffer[current + 3] == 's' &&
+        buffer[current + 4] == 'e' &&
+        // need to make sure it isn't something like falseatswa, using whitelist  
+        (is_end_control(buffer[current + 5]) || is_whitespace(buffer[current + 5]))){
+        
+        current += 5;
+        return true;
+    }    
+
+    return false;
+}
+
+bool Json::match_true(){
+    if(current + 4 < buffer.size() &&
+        buffer[current]     == 't' &&
+        buffer[current + 1] == 'r' &&
+        buffer[current + 2] == 'u' &&
+        buffer[current + 3] == 'e' &&
+        // need to make sure it isn't something like trueatswa, using whitelist  
+        (is_end_control(buffer[current + 4]) || is_whitespace(buffer[current + 4]))){
+        
+        current += 4;
+        return true;
+    }    
+
+    return false;
+}
+
+bool Json::match_null(){
+    if(current + 4 < buffer.size() &&
+        buffer[current]     == 'n' &&
+        buffer[current + 1] == 'u' &&
+        buffer[current + 2] == 'l' &&
+        buffer[current + 3] == 'l' &&
+        // need to make sure it isn't something like nullatswa, using whitelist  
+        (is_end_control(buffer[current + 4]) || is_whitespace(buffer[current + 4]))){
+        
+        current += 4;
+        return true;
+    }    
+
+    return false;
+}
+
+bool Json::match_number(double& number){
+    
+}
 
 // should error out if there is nothing to load
-Structure Json::load_something(){
-    Structure val(StructureType::LITERAL); // WTF
+Structure Json::load_value(){
+    skip();    
     
     switch(peek()){
     case '{':
@@ -143,16 +194,29 @@ Structure Json::load_something(){
     case '[':
         return load_array();
     case '\"':
-        val.set(load_string());
-        return val;
+        return Structure(load_string());
     default:
-        // could be number, string, true, false, null
+        if(match_true()){
+            return Structure(true);
+        }
+        if(match_false()){
+            return Structure(false);
+        }
+        if(match_null()){
+            return Structure(Literal(LiteralType::NULLVAL));
+        }
+        double number;
+        if(match_number(number)){
+            return Structure(number);
+        }
+
+        load_err("unexpected symbol for value");
         break;
     }
 }
 
 KeyedStructure Json::load_pair(){
-    assert(peek() == '\"');
+    assert(peek() == '\"'); // cannot match('\"') since load_string() expects it
 
     std::string key = load_string();
     skip();
@@ -161,8 +225,7 @@ KeyedStructure Json::load_pair(){
         load_err("key string must be followed by a semicolon");    
     }
 
-    skip();
-    Structure val = load_something();
+    Structure val = load_value();
 
     return KeyedStructure(key, val);
 }
@@ -172,36 +235,83 @@ Structure Json::load_object(){
     assert(match('{'));
 
     Structure node(StructureType::OBJECT);
-    bool need = false;
+
+    // empty object
+    skip();
+    if(match('}')){
+        return node;
+    }
+
+    // whether we are expecting another item in the object
+    bool pending = true;
 
     while(!reached_end()){
         skip();
-        
-        switch(peek()){
-        case '}':
-            if (need){
-                load_err("expected one more element. ,} isn't valid");
+
+        if(pending){
+            if(peek() == '\"'){
+                node.obj_add(load_pair());
+                pending = false;
+                continue;
+            }else{
+                load_err("unexpected symbol, wanted key-value pair");
             }
-            return node; // end of current object
-        case '\"':
-            node.add(load_pair());
-            need = false;
-            break;
+        }
+
+        // not currently pending
+        switch(peek()){
         case ',':
+            pending = true;
             next();
-            need = true;   // ,} is not valid json
             break;
+        case '}':
+            next();
+            return node;
         default:
-            load_err("key must be in double-quotes");
-            break;
+            load_err("unexpected symbol, wanted , or }");
         }
     }
 
-    load_err("reached end of file without closing bracket: }");
+    load_err("reached EOF without closing curly brace");
 }
 
 Structure Json::load_array(){
     assert(match('['));
+
+    Structure node(StructureType::ARRAY);
+
+    // empty array
+    skip();
+    if(match(']')){
+        return node;
+    }
+    
+    // whether we are expecting another item in the array
+    bool pending = true;
+   
+    while(!reached_end()){
+        skip();
+
+        if(pending){
+            node.array_add(load_value());
+            continue;
+        }
+
+        // not currently pending
+        switch(peek()){
+        case ']':
+            next();
+            return node;
+        case ',':
+            pending = true;
+            next();
+            break;
+        default:
+            load_err("unexpected symbol, wanted , or ]");
+        }
+    }
+    
+    load_err("reached EOF without closing square brace");
 }
 
 
@@ -222,6 +332,40 @@ Structure Json::load(){
 
 Literal::Literal() : tag(LiteralType::INVALID) {}
 
+Literal::Literal(LiteralType lt){
+    tag = lt;
+    val = false; // setting the memory to 0 just in case
+}
+
+Literal::Literal(std::string str){
+    tag = LiteralType::STRING;
+    val = str;
+}
+
+Literal::Literal(bool v){
+    tag = LiteralType::BOOL;
+    val = v;
+}
+
+Literal::Literal(double num){
+    tag = LiteralType::NUMBER;
+    val = num;
+}
+
+Structure::Structure(double num){
+    tag = StructureType::LITERAL;
+    val = Literal(num);
+}
+
+Structure::Structure(Literal lit){
+    tag = StructureType::LITERAL;
+    val = lit;
+}
+
+Structure::Structure(std::string str){
+    tag = StructureType::LITERAL;
+    val = Literal(str);
+}
 
 Structure::Structure(StructureType tag){
 	this->tag = tag;
@@ -238,4 +382,9 @@ Structure::Structure(StructureType tag){
 	    case StructureType::INVALID:
 	    	exit(2); // should never be reached
     }
+}
+
+Structure::Structure(bool v){
+    tag = StructureType::LITERAL;
+    val = Literal(v);
 }

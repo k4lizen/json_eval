@@ -1,3 +1,5 @@
 .gdb_history
 json_eval
 **/*.o
+.cache
+compile_commands.json

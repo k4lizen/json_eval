@@ -25,7 +25,10 @@ public:
 		> val;
 
 	Literal();
-	void set_string(std::string str); 
+	Literal(std::string str);
+	Literal(bool v);
+	Literal(double num);
+	Literal(LiteralType lt);  // should be used only for NULLVAL
 };
 
 enum class StructureType {
@@ -37,27 +40,32 @@ enum class StructureType {
 
 class Structure;
 typedef std::pair<std::string, Structure> KeyedStructure;
+typedef std::map<std::string, Structure> StructureMap;
+typedef std::vector<Structure> StructureArray;
 
 class Structure {
 public:
 	// TODO: remove, can use holds_alternative
 	StructureType tag; // meh, double-tagged union
 	std::variant<
-		    std::map<std::string, Structure>,
-			std::vector<Structure>,
+			// the map is good for wide jsons
+			// for deep jsons, vector would be better
+			// could be optimized with trie
+		    StructureMap,
+			StructureArray,
 			Literal
 		> val;
-	
+
+	Structure(std::string str); // string literal
+	Structure(bool v);          // bool literal 
+	Structure(double num);      // number literal
+	Structure(Literal lit);     // any literal
 	Structure(StructureType tag);
 	Structure() {}
 	
-	// for array (vector)
-	void add(Structure child);
-	// for object (map)
-	void add(std::string key, Structure child);
-	void add(KeyedStructure key_val);
-	// for literals
-	void set(std::string str);
+	void array_add(Structure child);
+	void obj_add(std::string key, Structure child);
+	void obj_add(KeyedStructure key_val);
 };
 
 class Json{
@@ -81,6 +89,10 @@ private:
 	Structure load_object();
 	Structure load_array();
 	std::pair<std::string, Structure> load_pair();
-	Structure load_something();
+	Structure load_value();
 	std::string load_string();
+	bool match_true();
+	bool match_false();
+	bool match_null();
+	bool match_number(double& number);
 };
