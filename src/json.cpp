@@ -294,6 +294,7 @@ Structure Json::load_array(){
 
         if(pending){
             node.array_add(load_value());
+            pending = false;
             continue;
         }
 
