@@ -37,7 +37,6 @@ private:
 			double,
 			bool 
 		> val;
-
 };
 
 enum class StructureType {
@@ -76,8 +75,6 @@ private:
 			StructureArray,
 			Literal
 		> val;
-
-	
 };
 
 class Json{
@@ -86,9 +83,8 @@ public:
 	
 private:
 	std::string buffer;
-	unsigned int line = 0;      // line currently being parsed
+	unsigned int line = 1;      // line currently being parsed
 	unsigned int current = 0;  // index of character being parsed
-	unsigned int start = 0;     // start of token being parsed 
 	Structure root;         // the deserialized json
 
 	[[noreturn]] void load_err(const std::string& msg);

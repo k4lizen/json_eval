@@ -132,6 +132,8 @@ void Structure::obj_add(const KeyedStructure& key_val){
     std::get<StructureMap>(val)[key_val.first] = key_val.second;
 }
 
+
+
 char Json::parse_escaped(){
     // string section of https://www.json.org/json-en.html
     assert_match('\\');
@@ -177,6 +179,10 @@ std::string Json::load_string(){
             sstream << parse_escaped();
             break;
         default:
+            if(static_cast<int>(c) < 0x20){
+                load_err("strings cannot include unescaped control characters");
+            }
+        
             sstream << c;
         }
 
@@ -459,7 +465,7 @@ Structure::Structure(const StructureType& tag){
 	    	val = Literal();
 	    	break;
 	    case StructureType::INVALID:
-	    	exit(2); // should never be reached
+            assert(0);
     }
 }
 
