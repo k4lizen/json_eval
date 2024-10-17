@@ -9,7 +9,7 @@ int main(int argc, char* argv[]){
 
     try{
         // Load and parse json from file
-        Json json(argv[1]);
+        Json json((std::string(argv[1])));
     } catch (const JsonLoadErr& e) {
         std::cerr << e.what() << std::endl;
         return 1;

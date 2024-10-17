@@ -39,14 +39,14 @@ std::string Json::error_line(){
     return desc;
 }
 
-[[noreturn]] void Json::load_err(std::string msg){
+[[noreturn]] void Json::load_err(const std::string& msg){
     std::string err_msg =  "Load Error: " + msg + '\n';
     err_msg += error_line();
 
     throw JsonLoadErr(err_msg);
 }
 
-Json::Json(std::string file_name){
+Json::Json(const std::string& file_name){
     std::ifstream infile(file_name);
 
     if(!infile.good()){
@@ -70,7 +70,7 @@ Json::Json(std::string file_name){
 }
 
 // Advance only if the next character matches param
-bool Json::match(char c){
+bool Json::match(const char c){
     if(peek() == c){
         next();
         return true;
@@ -78,7 +78,7 @@ bool Json::match(char c){
     return false;
 }
 
-void Json::assert_match(char c){
+void Json::assert_match(const char c){
     assert(peek() == c);
     next();
 }
@@ -117,17 +117,17 @@ void Json::skip(){
     }
 }
 
-void Structure::array_add(Structure elem){
+void Structure::array_add(const Structure& elem){
     assert(tag == StructureType::ARRAY);
     std::get<StructureArray>(val).push_back(elem);
 }
 
-void Structure::obj_add(std::string key, Structure child){
+void Structure::obj_add(const std::string& key, const Structure& child){
     assert(tag == StructureType::OBJECT);
     std::get<StructureMap>(val)[key] = child;
 }
 
-void Structure::obj_add(KeyedStructure key_val){
+void Structure::obj_add(const KeyedStructure& key_val){
     assert(tag == StructureType::OBJECT);
     std::get<StructureMap>(val)[key_val.first] = key_val.second;
 }
@@ -186,7 +186,7 @@ std::string Json::load_string(){
     load_err("unterminated string");    
 }
 
-bool is_end_control(char c){
+bool is_end_control(const char c){
     return c == ',' || c == '}' || c == ']';
 }
 
@@ -411,42 +411,42 @@ Structure Json::load(){
 
 Literal::Literal() : tag(LiteralType::INVALID) {}
 
-Literal::Literal(LiteralType lt){
+Literal::Literal(const LiteralType& lt){
     tag = lt;
     val = false; // setting the memory to 0 just in case
 }
 
-Literal::Literal(std::string str){
+Literal::Literal(const std::string& str){
     tag = LiteralType::STRING;
     val = str;
 }
 
-Literal::Literal(bool v){
+Literal::Literal(const bool v){
     tag = LiteralType::BOOL;
     val = v;
 }
 
-Literal::Literal(double num){
+Literal::Literal(const double num){
     tag = LiteralType::NUMBER;
     val = num;
 }
 
-Structure::Structure(double num){
+Structure::Structure(const double num){
     tag = StructureType::LITERAL;
     val = Literal(num);
 }
 
-Structure::Structure(Literal lit){
+Structure::Structure(const Literal& lit){
     tag = StructureType::LITERAL;
     val = lit;
 }
 
-Structure::Structure(std::string str){
+Structure::Structure(const std::string& str){
     tag = StructureType::LITERAL;
     val = Literal(str);
 }
 
-Structure::Structure(StructureType tag){
+Structure::Structure(const StructureType& tag){
 	this->tag = tag;
 	switch (tag) {
     	case StructureType::OBJECT:
@@ -463,7 +463,7 @@ Structure::Structure(StructureType tag){
     }
 }
 
-Structure::Structure(bool v){
+Structure::Structure(const bool v){
     tag = StructureType::LITERAL;
     val = Literal(v);
 }
