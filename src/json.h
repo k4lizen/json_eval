@@ -85,6 +85,7 @@ private:
 	char peek();
 	char next();
 	bool match(char c);
+	void assert_match(char c);
 	void skip();
 	bool reached_end();
 	Structure load_object();
@@ -92,6 +93,7 @@ private:
 	std::pair<std::string, Structure> load_pair();
 	Structure load_value();
 	std::string load_string();
+	char parse_escaped();
 	bool match_true();
 	bool match_false();
 	bool match_null();

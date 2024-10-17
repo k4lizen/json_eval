@@ -1,5 +1,4 @@
 #include <cassert>
-#include <cfenv>
 #include <charconv>
 #include <iostream>
 #include <sstream>
@@ -18,14 +17,14 @@ void Json::line_err(){
     while(ln_start >= 0 && buffer[ln_start] != '\n'){
         ln_start--;
     }
-    while(ln_end < (int)buffer.size() && buffer[ln_end] != '\n'){
+    while(ln_end < static_cast<int>(buffer.size()) && buffer[ln_end] != '\n'){
         ln_end++;
     }
 
     std::cout << buffer.substr(ln_start + 1, (ln_end - ln_start));
 
     // point to the exact symbol that caused the issue
-    for(int i = ln_start + 1; i < (int)current; ++i){
+    for(int i = ln_start + 1; i < static_cast<int>(current); ++i){
         std::cout << " ";
     }
     std::cout << "^";
@@ -73,6 +72,11 @@ bool Json::match(char c){
         return true;
     }
     return false;
+}
+
+void Json::assert_match(char c){
+    assert(peek() == c);
+    next();
 }
 
 // Return current character
@@ -124,14 +128,37 @@ void Structure::obj_add(KeyedStructure key_val){
     std::get<StructureMap>(val)[key_val.first] = key_val.second;
 }
 
-char get_escaped(){
+char Json::parse_escaped(){
     // string section of https://www.json.org/json-en.html
-    // TODO
-    return '\0';
+    assert_match('\\');
+
+    switch(peek()){
+    case '"':
+        return '"';
+    case '\\':
+        return '\\';
+    case '/':
+        return '/';
+    case 'b':
+        return '\b';
+    case 'f':
+        return '\f';
+    case 'n':
+        return '\n';
+    case 'r':
+        return '\r';
+    case 't':
+        return '\t';
+    case 'u':
+        // unicode
+        break;
+    default:
+        load_err("invalid escape sequence");
+    }
 }
 
 std::string Json::load_string(){
-    assert(match('\"'));
+    assert_match('"');
 
     std::stringstream sstream;
 
@@ -139,11 +166,11 @@ std::string Json::load_string(){
         char c = peek();
         
         switch(c){
-        case '\"':
+        case '"':
             next();
             return sstream.str();
         case '\\':
-            sstream << get_escaped();
+            sstream << parse_escaped();
             break;
         default:
             sstream << c;
@@ -233,7 +260,6 @@ bool Json::match_number(double& number){
     return true;
 }
 
-// should error out if there is nothing to load
 Structure Json::load_value(){
     skip();    
     
@@ -242,7 +268,7 @@ Structure Json::load_value(){
         return load_object();
     case '[':
         return load_array();
-    case '\"':
+    case '"':
         return Structure(load_string());
     default:
         if(match_true()){
@@ -265,7 +291,7 @@ Structure Json::load_value(){
 }
 
 KeyedStructure Json::load_pair(){
-    assert(peek() == '\"'); // cannot match('\"') since load_string() expects it
+    assert(peek() == '"'); // cannot match('"') since load_string() expects it
 
     std::string key = load_string();
     skip();
@@ -281,7 +307,7 @@ KeyedStructure Json::load_pair(){
 
 
 Structure Json::load_object(){
-    assert(match('{'));
+    assert_match('{');
 
     Structure node(StructureType::OBJECT);
 
@@ -325,7 +351,7 @@ Structure Json::load_object(){
 }
 
 Structure Json::load_array(){
-    assert(match('['));
+    assert_match('[');
 
     Structure node(StructureType::ARRAY);
 
