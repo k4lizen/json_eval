@@ -9,9 +9,35 @@ bool is_whitespace(char c){
     return c == ' ' || c == '\n' || c == '\t' || c == '\r'; 
 }
 
+// print the line with the error
+void Json::line_err(){
+    int ln_start, ln_end;
+    ln_start = ln_end = current;
+    while(ln_start >= 0 && buffer[ln_start] != '\n'){
+        ln_start--;
+    }
+    while(ln_end < buffer.size() && buffer[ln_end] != '\n'){
+        ln_end++;
+    }
+
+    std::cout << buffer.substr(ln_start + 1, (ln_end - ln_start));
+
+    // point to the exact symbol that caused the issue
+    for(int i = ln_start + 1; i < current; ++i){
+        std::cout << " ";
+    }
+    std::cout << "^";
+    for(int i = 0; i < 10; ++i){
+        std::cout << "~";
+    }
+    std::cout << std::endl;
+    
+}
+
 void Json::load_err(std::string msg){
     std::cerr << "Load Error: " << msg << std::endl;
     std::cerr << "line: " << line << std::endl;
+    line_err();
     exit(1);
 }
 
@@ -205,10 +231,10 @@ Structure Json::load_value(){
         if(match_null()){
             return Structure(Literal(LiteralType::NULLVAL));
         }
-        double number;
-        if(match_number(number)){
-            return Structure(number);
-        }
+        // double number;
+        // if(match_number(number)){
+        //     return Structure(number);
+        // }
 
         load_err("unexpected symbol for value");
         break;

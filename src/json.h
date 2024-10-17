@@ -79,6 +79,7 @@ private:
 	Structure root;         // the deserialized json
 
 	void load_err(std::string);
+	void line_err();
 	Structure load();
 
 	char peek();

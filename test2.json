@@ -7,7 +7,7 @@
       "b": false,
       "c": null
     }, 
-    "arr": [ "a", "b", {}, null, true]
+    "arr": [ "a", "b", [], null, true]
     
   },
   "is cooking": "something"
