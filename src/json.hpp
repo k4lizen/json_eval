@@ -1,9 +1,16 @@
 #pragma once
 
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
+
+class JsonTypeErr : public std::runtime_error {
+public:
+    JsonTypeErr(const std::string& msg) : std::runtime_error(msg) {}
+};
+
 
 enum class JsonType {
     INVALID = 0,
@@ -27,16 +34,30 @@ typedef std::vector<Json> JsonArray;
 // JsonLoader::from_string() or JsonLoader::from_file().
 class Json {
 public:
-    Json();                       // null literal
-    Json(const bool v);           // true / false literal
-    Json(const double num);       // number literal
-    Json(const std::string& str); // string literal
-    Json(const JsonType& tag);    // Anything (used for object and array)
+    Json();                        // null literal
+    Json(const bool v);            // true / false literal
+    Json(const double num);        // number literal
+    Json(const std::string& str);  // string literal
+    Json(const JsonMap& jmap);     // object
+    Json(const JsonArray& jarray); // array
 
     // modifiers
     void array_add(const Json& child);
     void obj_add(const KeyedJson& key_val);
+
+    // accessors
+    JsonType get_type();
+    bool is_null();
+    bool get_bool();
+    double get_number();
+    std::string get_string();
+
+    Json operator[](const int idx);
+    Json operator[](const std::string& key);
+    bool obj_contains(const std::string& key);
+    int size();
+    
 private:
-    JsonType tag; // meh, double-tagged union
+    bool _is_null;
     std::variant<JsonMap, JsonArray, std::string, double, bool> val;
 };
