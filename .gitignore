@@ -1,5 +1,6 @@
 .gdb_history
 json_eval
+runtests
 **/*.o
 .cache
 compile_commands.json

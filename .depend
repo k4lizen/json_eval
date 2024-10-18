@@ -1,2 +1,2 @@
-json.o: src/json.cpp src/json.h
-main.o: src/main.cpp src/json.h
+json.o: src/json.cpp src/json.hpp
+main.o: src/main.cpp src/json.hpp

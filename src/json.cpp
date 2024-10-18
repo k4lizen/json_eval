@@ -4,7 +4,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "json.h"
+#include "json.hpp"
 
 bool is_whitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
@@ -12,7 +12,8 @@ bool is_whitespace(char c) {
 
 // return a description of the location of the error
 std::string Json::error_line() {
-    std::string desc = "line: " + std::to_string(line) + "\n\n";
+    std::string desc = "line: " + std::to_string(line)
+        + " position: " + std::to_string(current) + "\n";
 
     int ln_start, ln_end;
     ln_start = ln_end = current;
@@ -23,11 +24,25 @@ std::string Json::error_line() {
         ln_end++;
     }
 
-    // return the line which caused the issue
-    desc += buffer.substr(ln_start + 1, (ln_end - ln_start));
+    // return the line before the error, for better visibility
+    if (ln_start > 0) {
+        int prev_ln_start = ln_start - 1;
+        while (prev_ln_start >= 0 && buffer[prev_ln_start] != '\n') {
+            prev_ln_start--;
+        }
+        if (ln_start >= 0) {
+            desc += "...\n";
+        }
+        desc += std::to_string(line - 1) + ":" + buffer.substr(prev_ln_start + 1, ln_start - prev_ln_start);
+    }
+    
+    // return the line which caused the error
+    std::string cur_line_num = std::to_string(line);
+    desc += cur_line_num + ":" + buffer.substr(ln_start + 1, (ln_end - ln_start));
 
     // point to the exact problematic symbol
-    for (int i = ln_start + 1; i < static_cast<int>(current); ++i) {
+    int padding = cur_line_num.size() + 1 + static_cast<int>(current) - (ln_start + 1);
+    for (int i = 0; i < padding; ++i) {
         desc += ' ';
     }
     desc += '^';
