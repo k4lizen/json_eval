@@ -1,0 +1,24 @@
+{
+    "mama mia": {
+        "4": 4,
+        "this is": "pretty cool",
+        "key": {
+            "a": true,
+            "b": false,
+            "c": null
+        },
+        "arr": [
+            "a",
+            "b",
+            [],
+            null,
+            true,
+            3.13
+        ],
+        "num": -10120.23029E+39,
+        "nya": {
+            :"bab"
+        },
+        "filler": []
+    },
+}

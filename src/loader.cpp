@@ -48,6 +48,11 @@ std::string JsonLoader::error_line() {
     desc +=
         cur_line_num + ":" + buffer.substr(ln_start + 1, (ln_end - ln_start));
 
+    // if this is the last line of the file, it may not have a \n
+    if (desc[desc.size() - 1] != '\n'){
+        desc += '\n';
+    }
+
     // point to the exact problematic symbol
     int padding =
         cur_line_num.size() + 1 + static_cast<int>(current) - (ln_start + 1);
@@ -259,20 +264,28 @@ std::string JsonLoader::parse_escaped() {
 
     switch (peek()) {
     case '"':
+        next();
         return "\"";
     case '\\':
+        next();
         return "\\";
     case '/':
+        next();
         return "/";
     case 'b':
+        next();
         return "\b";
     case 'f':
+        next();
         return "\f";
     case 'n':
+        next();
         return "\n";
     case 'r':
+        next();
         return "\r";
     case 't':
+        next();
         return "\t";
     case 'u':
         return parse_unicode();

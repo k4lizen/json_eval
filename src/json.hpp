@@ -33,9 +33,9 @@ public:
     Json(const std::string& str); // string literal
     Json(const JsonType& tag);    // Anything (used for object and array)
 
+    // modifiers
     void array_add(const Json& child);
     void obj_add(const KeyedJson& key_val);
-
 private:
     JsonType tag; // meh, double-tagged union
     std::variant<JsonMap, JsonArray, std::string, double, bool> val;
