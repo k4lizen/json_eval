@@ -1,15 +1,9 @@
 #pragma once
 
 #include <map>
-#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
-
-class JsonLoadErr : public std::runtime_error {
-  public:
-    JsonLoadErr(const std::string& msg) : std::runtime_error(msg) {}
-};
 
 enum class LiteralType {
     INVALID = 0,
@@ -40,67 +34,32 @@ enum class StructureType {
     LITERAL
 };
 
-class Structure;
-typedef std::pair<std::string, Structure> KeyedStructure;
-typedef std::map<std::string, Structure> StructureMap;
-typedef std::vector<Structure> StructureArray;
+class Json;
+typedef std::pair<std::string, Json> KeyedJson;
+typedef std::map<std::string, Json> JsonMap;
+typedef std::vector<Json> JsonArray;
 
-class Structure {
+class Json {
   public:
-    Structure(const bool v);           // bool literal
-    Structure(const double num);       // number literal
-    Structure(const std::string& str); // string literal
-    Structure(const Literal& lit);     // any literal
-    Structure(const StructureType& tag);
-    Structure() {}
+    Json(const bool v);           // bool literal
+    Json(const double num);       // number literal
+    Json(const std::string& str); // string literal
+    Json(const Literal& lit);     // any literal
+    Json(const StructureType& tag);
+    Json() {}
 
-    void array_add(const Structure& child);
-    void obj_add(const std::string& key, const Structure& child);
-    void obj_add(const KeyedStructure& key_val);
+    void array_add(const Json& child);
+    void obj_add(const std::string& key, const Json& child);
+    void obj_add(const KeyedJson& key_val);
 
   private:
     // TODO: remove, can use holds_alternative
     StructureType tag; // meh, double-tagged union
     std::variant<
-        // the map is good for wide jsons
-        // for deep jsons, vector would be better
+        // the map is good for wide jsons.
+        // for deep jsons, vector would be better.
         // could be optimized with trie
-        StructureMap, StructureArray, Literal>
+        JsonMap, JsonArray, Literal>
         val;
 };
 
-class Json {
-  public:
-    Json(const std::string& file_name);
-
-  private:
-    std::string buffer;
-    unsigned int line = 1;    // line currently being parsed
-    unsigned int current = 0; // index of character being parsed
-    Structure root;           // the deserialized json
-
-    [[noreturn]] void load_err(const std::string& msg);
-    std::string error_line();
-    Structure load();
-
-    char peek();
-    char next();
-    bool match(const char c);
-    void assert_match(const char c);
-    void skip();
-    bool reached_end();
-    Structure load_object();
-    Structure load_array();
-    KeyedStructure load_pair();
-    Structure load_value();
-    std::string load_string();
-    std::string parse_escaped();
-    std::string parse_unicode();
-    unsigned int parse_codepoint();
-    unsigned int unhexbyte();
-    
-    bool match_true();
-    bool match_false();
-    bool match_null();
-    bool match_number(double& number);
-};

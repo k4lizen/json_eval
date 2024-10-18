@@ -1,4 +1,4 @@
-#include "json.hpp"
+#include "loader.hpp"
 #include <iostream>
 
 int main(int argc, char* argv[]) {
@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
 
     try {
         // Load and parse json from file
-        Json json((std::string(argv[1])));
+        JsonLoader json((std::string(argv[1])));
     } catch (const JsonLoadErr& e) {
         std::cerr << e.what() << std::endl;
         return 1;

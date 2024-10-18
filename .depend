@@ -1,2 +1,3 @@
 json.o: src/json.cpp src/json.hpp
-main.o: src/main.cpp src/json.hpp
+loader.o: src/loader.cpp src/json.hpp src/loader.hpp
+main.o: src/main.cpp src/loader.hpp src/json.hpp

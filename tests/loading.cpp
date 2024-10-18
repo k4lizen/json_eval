@@ -1,6 +1,6 @@
 #define CATCH_CONFIG_MAIN
 
-#include "json.hpp"
+#include "loader.hpp"
 #include "catch_amalgamated.hpp"
 
 
@@ -16,14 +16,14 @@ TEST_CASE ("no value") {
 
     REQUIRE_THROWS_AS(
         [filename] {
-            Json json(filename);
+            JsonLoader json(filename);
         }(),
         JsonLoadErr
     );
 
     REQUIRE_THROWS_WITH(
         [filename] {
-            Json json(filename);
+            JsonLoader json(filename);
         }(),
         expected
     );
