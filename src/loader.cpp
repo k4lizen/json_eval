@@ -396,7 +396,7 @@ Json JsonLoader::load_value() {
             return Json(false);
         }
         if (match_null()) {
-            return Json(Literal(LiteralType::NULLVAL));
+            return Json(JsonType::NULLVAL);
         }
         double number;
         if (match_number(number)) {
@@ -425,7 +425,7 @@ KeyedJson JsonLoader::load_pair() {
 Json JsonLoader::load_object() {
     assert_match('{');
 
-    Json node(StructureType::OBJECT);
+    Json node(JsonType::OBJECT);
 
     // empty object
     skip();
@@ -469,7 +469,7 @@ Json JsonLoader::load_object() {
 Json JsonLoader::load_array() {
     assert_match('[');
 
-    Json node(StructureType::ARRAY);
+    Json node(JsonType::ARRAY);
 
     // empty array
     skip();
