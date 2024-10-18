@@ -2,27 +2,31 @@
 
 #include "json.hpp"
 
-#include <string>
 #include <stdexcept>
+#include <string>
 
 class JsonLoadErr : public std::runtime_error {
-  public:
+public:
     JsonLoadErr(const std::string& msg) : std::runtime_error(msg) {}
 };
 
+// Used for deserializing JSON
+// returns object of type Json
 class JsonLoader {
-  public:
-    JsonLoader(const std::string& file_name);
+public:
+    static Json from_string(const std::string& str);
+    static Json from_file(const std::string& file_name);
 
-  private:
+private:
+    JsonLoader(const std::string& data);
+
     std::string buffer;
-    unsigned int line = 1;    // line currently being parsed
-    unsigned int current = 0; // index of character being parsed
-    Json root;           // the deserialized json
+    unsigned int line;    // line currently being parsed
+    unsigned int current; // index of character being parsed
 
     [[noreturn]] void load_err(const std::string& msg);
     std::string error_line();
-    Json load();
+    Json load(bool strict = true);
 
     char peek();
     char next();
@@ -39,7 +43,7 @@ class JsonLoader {
     std::string parse_unicode();
     unsigned int parse_codepoint();
     unsigned int unhexbyte();
-    
+
     bool match_true();
     bool match_false();
     bool match_null();

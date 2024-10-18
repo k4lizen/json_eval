@@ -9,10 +9,13 @@ int main(int argc, char* argv[]) {
 
     try {
         // Load and parse json from file
-        JsonLoader json((std::string(argv[1])));
+        Json json = JsonLoader::from_file((std::string(argv[1])));
     } catch (const JsonLoadErr& e) {
-        std::cerr << e.what() << std::endl;
+        std::cerr << e.what() << '\n';
         return 1;
+    } catch (const std::runtime_error& e) {
+        std::cerr << e.what() << '\n';
+        return 2;
     }
 
     std::cout << "File OK!\n";

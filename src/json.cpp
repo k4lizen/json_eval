@@ -52,11 +52,6 @@ void Json::array_add(const Json& elem) {
     std::get<JsonArray>(val).push_back(elem);
 }
 
-void Json::obj_add(const std::string& key, const Json& child) {
-    assert(tag == JsonType::OBJECT);
-    std::get<JsonMap>(val)[key] = child;
-}
-
 void Json::obj_add(const KeyedJson& key_val) {
     assert(tag == JsonType::OBJECT);
     std::get<JsonMap>(val)[key_val.first] = key_val.second;

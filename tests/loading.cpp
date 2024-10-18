@@ -5,25 +5,49 @@
 
 
 TEST_CASE ("no value") {
-    std::string filename("tests/data/no_value.json");
-    std::string expected(
-        "Load Error: unexpected symbol for value\n"
-        "line: 21 position: 375\n"
-        "...\n"
-        "20:            \"awa\":\n"
-        "21:        },\n"
-        "           ^~~~~~~~~~~\n");
+    std::string data = R"({
+    "mama mia": {
+        "4": 4,
+        "this is": "pretty cool",
+        "key": {
+            "a": true,
+            "b": false,
+            "c": null
+        },
+        "arr": [
+            "a",
+            "b",
+            [],
+            null,
+            true,
+            3.13
+        ],
+        "num": -10120.23029E+39,
+        "nya": {
+            "awa":
+        },
+        "filler": []
+    },
+})";
+
+    std::string expected = R"(Load Error: unexpected symbol for value
+line: 21 position: 375
+...
+20:            "awa":
+21:        },
+           ^~~~~~~~~~~
+)";
 
     REQUIRE_THROWS_AS(
-        [filename] {
-            JsonLoader json(filename);
+        [data] {
+            JsonLoader::from_string(data);
         }(),
         JsonLoadErr
     );
 
     REQUIRE_THROWS_WITH(
-        [filename] {
-            JsonLoader json(filename);
+        [data] {
+            JsonLoader::from_string(data);
         }(),
         expected
     );

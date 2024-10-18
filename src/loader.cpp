@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 #include "json.hpp"
 #include "loader.hpp"
@@ -69,27 +70,40 @@ std::string JsonLoader::error_line() {
     throw JsonLoadErr(err_msg);
 }
 
-JsonLoader::JsonLoader(const std::string& file_name) {
+Json JsonLoader::from_file(const std::string& file_name) {
     std::ifstream infile(file_name);
 
     if (!infile.good()) {
         infile.close();
-        load_err("failed opening file \"" + file_name + "\". Does it exist?");
+        throw std::runtime_error("Failed opening file " + file_name +
+                                 ". Does it exit?");
     }
 
+    // Read the whole file into a std::string
+    // bad if the file is larger than free RAM
     std::stringstream sstr;
     infile >> sstr.rdbuf();
-    buffer = sstr.str();
     infile.close();
+    std::string file_contents = sstr.str();
 
-    if (buffer.empty()) {
-        load_err("file \"" + file_name + "\" is empty.");
+    if (file_contents.empty()) {
+        throw std::runtime_error("File " + file_name + " empty.");
     }
 
-    std::cout << "File contents: " << std::endl << buffer;
-
+    JsonLoader jl(file_contents);
     // Main parsing logic
-    root = load();
+    return jl.load();
+}
+
+Json JsonLoader::from_string(const std::string& json_data) {
+    JsonLoader jl(json_data);
+    return jl.load();
+}
+
+JsonLoader::JsonLoader(const std::string& data) {
+    buffer = data;
+    line = 1;
+    current = 0;
 }
 
 // Advance only if the next character matches param
@@ -506,17 +520,26 @@ Json JsonLoader::load_array() {
     load_err("reached EOF without closing square brace");
 }
 
-Json JsonLoader::load() {
-    // The most outer structure is handled seperately
-    // since it must be an object or array
-    skip();
+// Initiates the parsing logic of JsonLoader
+// If strict is true only objects and arrays are accepted
+// as valid JSON. (default=true)
+Json JsonLoader::load(bool strict) {
+    // The JSON RFC allows both for the stricter and more
+    // lax definition.
+    // https://www.rfc-editor.org/rfc/rfc8259
 
-    switch (peek()) {
-    case '{':
-        return load_object();
-    case '[':
-        return load_array();
-    default:
-        load_err("json must be object or array");
+    if (strict) {
+        skip();
+
+        switch (peek()) {
+        case '{':
+            return load_object();
+        case '[':
+            return load_array();
+        default:
+            load_err("json must be object or array");
+        }
+    } else {
+        return load_value();
     }
 }
