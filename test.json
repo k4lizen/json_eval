@@ -1,3 +1,24 @@
 {
-	"k": "v"
+    "mama mia": {
+        "4": 4,
+        "this is": "pretty cool",
+        "nya": {
+            "awa": "peko"
+        },
+        "key": {
+            "a": true,
+            "b": false,
+            "c": null
+        },
+        "arr": [
+            "a",
+            "b",
+            [],
+            null,
+            true,
+            3.13
+        ],
+        "num": -10120.23029E+39
+    },
+    "is cooking": "something\u000A\u0041bb\uAAAA\uD801\uDD01nya"
 }

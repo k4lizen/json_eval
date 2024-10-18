@@ -12,7 +12,7 @@ bool is_whitespace(char c) {
 
 // return a description of the location of the error
 std::string Json::error_line() {
-    std::string desc = "line: " + std::to_string(line) + '\n';
+    std::string desc = "line: " + std::to_string(line) + "\n\n";
 
     int ln_start, ln_end;
     ln_start = ln_end = current;
@@ -132,30 +132,127 @@ void Structure::obj_add(const KeyedStructure& key_val) {
     std::get<StructureMap>(val)[key_val.first] = key_val.second;
 }
 
-char Json::parse_escaped() {
+// Consumes a hex character from the buffer and returns it
+unsigned int Json::unhexbyte(){
+    char c = peek();
+    next();
+    
+    if ('0' <= c && c <= '9') {
+        return static_cast<unsigned int>(c - '0');
+    } else if ('a' <= c && c <= 'f') {
+        return static_cast<unsigned int>(c - 'a' + 10);
+    } else if ('A' <= c && c <= 'F') {
+        return static_cast<unsigned int>(c - 'A' + 10);
+    } else {
+        current -= 1;
+        load_err("invalid hex character in \\uXXXX escape sequence");
+    }
+    
+}
+
+// Returns a two-byte value determined by a \uXXXX escape
+unsigned int Json::parse_codepoint() {
+    if (current + 3 >= buffer.size()) {
+        load_err("the \\uXXXX escape needs four characters");
+    }
+
+    unsigned int codepoint = unhexbyte();
+    codepoint = (codepoint << 4) | unhexbyte();
+    codepoint = (codepoint << 4) | unhexbyte();
+    codepoint = (codepoint << 4) | unhexbyte();
+    return codepoint;
+}
+
+std::string Json::parse_unicode() {
+    assert_match('u');
+    unsigned int codepoint = parse_codepoint();
+
+    //  https://www.rfc-editor.org/rfc/rfc8259#section-7
+
+    // > JSON text exchanged between systems that are not part of a closed
+    // > ecosystem MUST be encoded using UTF-8 [RFC3629].
+
+    // But also:
+
+    // > To escape an extended character that is not in the Basic Multilingual
+    // > Plane, the character is represented as a 12-character sequence,
+    // > encoding the UTF-16 surrogate pair.  So, for example, a string
+    // > containing only the G clef character (U+1D11E) may be represented as
+    // > "\uD834\uDD1E".
+
+    // weird design.
+   
+    // surrogate pair, low part
+    if (0xDC00 <= codepoint && codepoint <= 0xDFFF) {
+        load_err("codepoint is for the low part of a utf-16 surrogate pair, but there is no preceding high part");
+    }
+
+    // surrogate pair, high part
+    if (0xD800 <= codepoint && codepoint <= 0xDBFF) {
+        if (current + 5 >= buffer.size() || !match('\\') || !match('u')) {
+            load_err("expected second (low) part of utf-16 surrogate pair");
+        }
+
+        unsigned int low_part = parse_codepoint();
+        if (!(0xDC00 <= low_part && low_part <= 0xDFFF)) {
+            current -= 4;
+            load_err("codepoint isn't valid low part of utf-16 surrogate pair");
+        }
+
+        codepoint = 0x10000 + (((codepoint - 0xD800) << 10) | (low_part - 0xDC00));
+    }
+
+    // Now that we have the actual value of the unicode codepoint being encoded,
+    // we "have to" re-encode it to UTF-8 (no surrogates!) for storage
+    assert(codepoint <= 0x10FFFF);
+    
+    std::string result;
+    if (codepoint < 0x80) {
+        // 1 code unit: 0xxxxxxx (ascii)
+        result =  static_cast<char>(codepoint);
+    } else if (codepoint < 0x800) {
+        // 2 code units: 110xxxxx 10xxxxxx
+        result =  static_cast<char>(0xC0 | ((codepoint >> 6) & 0x1F));
+        result += static_cast<char>(0x80 | ((codepoint >> 0) & 0x3F));        
+    } else if (codepoint < 0x10000){
+        // 3 code units: 1110xxxx 10xxxxxx 10xxxxxx
+        result =  static_cast<char>(0xE0 | ((codepoint >> 12) & 0x0F));
+        result += static_cast<char>(0x80 | ((codepoint >>  6) & 0x3F));
+        result += static_cast<char>(0x80 | ((codepoint >>  0) & 0x3F));
+    } else {
+        // 4 code units: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+        result =  static_cast<char>(0xF0 | ((codepoint >> 18) & 0x07));    
+        result += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));    
+        result += static_cast<char>(0x80 | ((codepoint >>  6) & 0x3F));    
+        result += static_cast<char>(0x80 | ((codepoint >>  0) & 0x3F));    
+    }
+    
+    return result;
+}
+
+std::string Json::parse_escaped() {
     // string section of https://www.json.org/json-en.html
     assert_match('\\');
 
     switch (peek()) {
     case '"':
-        return '"';
+        return "\"";
     case '\\':
-        return '\\';
+        return "\\";
     case '/':
-        return '/';
+        return "/";
     case 'b':
-        return '\b';
+        return "\b";
     case 'f':
-        return '\f';
+        return "\f";
     case 'n':
-        return '\n';
+        return "\n";
     case 'r':
-        return '\r';
+        return "\r";
     case 't':
-        return '\t';
+        return "\t";
     case 'u':
-        // unicode
-        break;
+        return parse_unicode();
     default:
         load_err("invalid escape sequence");
     }
@@ -163,6 +260,7 @@ char Json::parse_escaped() {
 
 std::string Json::load_string() {
     assert_match('"');
+    // https://www.rfc-editor.org/rfc/rfc8259#section-7
 
     std::stringstream sstream;
 
@@ -182,9 +280,8 @@ std::string Json::load_string() {
             }
 
             sstream << c;
+            next();
         }
-
-        next();
     }
 
     load_err("unterminated string");
@@ -241,9 +338,19 @@ bool Json::match_null() {
 
 // If false is returned, number is undefined
 bool Json::match_number(double& number) {
-    // We can't use strtod and friends because they don't
-    // conform to the json definition of a number, but
-    // from_chars does. Also, see Notes section in
+    // https://www.rfc-editor.org/rfc/rfc8259#section-6
+    
+    // > Since software that implements
+    // > IEEE 754 binary64 (double precision) numbers [IEEE754] is generally
+    // > available and widely used, good interoperability can be achieved by
+    // > implementations that expect no more precision or range than these
+    // > provide, [...]
+    //
+    // So we will use a double (64 bits) for the number type
+
+    // We can't use strtod and friends for the conversion because they 
+    // don't conform to the json definition of a number, but from_chars
+    // does. Also, see Notes section in 
     // https://en.cppreference.com/w/cpp/utility/from_chars
 
     const char* cbuff = buffer.c_str();

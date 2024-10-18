@@ -94,7 +94,11 @@ class Json {
     KeyedStructure load_pair();
     Structure load_value();
     std::string load_string();
-    char parse_escaped();
+    std::string parse_escaped();
+    std::string parse_unicode();
+    unsigned int parse_codepoint();
+    unsigned int unhexbyte();
+    
     bool match_true();
     bool match_false();
     bool match_null();
