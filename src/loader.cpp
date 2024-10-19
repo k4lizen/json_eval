@@ -311,7 +311,7 @@ std::string JsonLoader::load_string() {
             sstream << parse_escaped();
             break;
         default:
-            if (static_cast<int>(c) < 0x20) {
+            if (static_cast<unsigned int>(c) < 0x20) {
                 load_err("strings cannot include unescaped control characters");
             }
 

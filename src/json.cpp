@@ -106,7 +106,12 @@ Json Json::operator[](const int idx) {
 // valid only for JsonType::OBJECT
 Json Json::operator[](const std::string& key) {
     if (std::holds_alternative<JsonMap>(val)) {
-        return std::get<JsonMap>(val)[key];
+        auto obj = std::get<JsonMap>(val);
+        if (obj.contains(key)) {
+            return obj[key];
+        } else {
+            throw new JsonTypeErr("object doesn't contain provided key");
+        }
     } else {
         throw JsonTypeErr("operator[std::string] invalid, instance isnt JsonType::OBJECT");
     }

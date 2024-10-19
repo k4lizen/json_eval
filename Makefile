@@ -16,7 +16,7 @@ $(project): $(objects)
 
 test: $(testobjects) $(objects)
 	$(CXX) $(CXXFLAGS) -o runtests $(testobjects) $(filter-out src/main.o,$(objects)) external/catch_amalgamated.cpp $(LDLIBS)
-	./runtests
+	./runtests -i
 
 depend: .depend
 
