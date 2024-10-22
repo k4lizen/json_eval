@@ -41,6 +41,8 @@ public:
     Json(const JsonMap& jmap);     // object
     Json(const JsonArray& jarray); // array
 
+    std::string evaluate_expr(const std::string& expr);
+
     // modifiers
     void array_add(const Json& child);
     void obj_add(const KeyedJson& key_val);

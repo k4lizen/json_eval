@@ -1,4 +1,5 @@
 #include "json.hpp"
+#include "expressions.hpp"
 #include <cassert>
 #include <variant>
 
@@ -30,6 +31,11 @@ Json::Json(const JsonMap& jmap) {
 Json::Json(const JsonArray& jarray) {
     _is_null = false;
     val = jarray;
+}
+
+std::string Json::evaluate_expr(const std::string& expr) {
+    JsonExpressionParser jep(*this, expr);
+    return jep.parse();
 }
 
 // valid only for JsonType::ARRAY

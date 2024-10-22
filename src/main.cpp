@@ -7,9 +7,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    Json json;
     try {
         // Load and parse json from file
-        Json json = JsonLoader::from_file((std::string(argv[1])));
+        json = JsonLoader::from_file((std::string(argv[1])));
     } catch (const JsonLoadErr& e) {
         std::cerr << e.what() << '\n';
         return 1;
@@ -17,8 +18,10 @@ int main(int argc, char* argv[]) {
         std::cerr << e.what() << '\n';
         return 2;
     }
-
     std::cout << "File OK!\n";
 
+    std::string result = json.evaluate_expr(std::string(argv[2]));
+    std::cout << result << "\n";
+    
     return 0;
 }
