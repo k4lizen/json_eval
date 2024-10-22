@@ -1,5 +1,6 @@
 #include "json.hpp"
 #include "expressions.hpp"
+#include "loader.hpp"
 #include <cassert>
 #include <variant>
 
@@ -147,4 +148,12 @@ int Json::size(){
     } else {
         return std::get<JsonMap>(val).size();
     }
+}
+
+Json Json::from_string(const std::string& str) {
+    return JsonLoader::from_string(str);
+}
+
+Json Json::from_file(const std::string& file_name) {
+    return JsonLoader::from_file(file_name);
 }

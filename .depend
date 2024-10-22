@@ -1,4 +1,4 @@
 expressions.o: src/expressions.cpp src/expressions.hpp src/json.hpp
-json.o: src/json.cpp src/json.hpp src/expressions.hpp
+json.o: src/json.cpp src/json.hpp src/expressions.hpp src/loader.hpp
 loader.o: src/loader.cpp src/json.hpp src/loader.hpp
-main.o: src/main.cpp src/loader.hpp src/json.hpp
+main.o: src/main.cpp src/json.hpp src/loader.hpp

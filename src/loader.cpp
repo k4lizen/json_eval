@@ -100,8 +100,8 @@ Json JsonLoader::from_file(const std::string& file_name) {
     return jl.load();
 }
 
-Json JsonLoader::from_string(const std::string& json_data) {
-    JsonLoader jl(json_data);
+Json JsonLoader::from_string(const std::string& str) {
+    JsonLoader jl(str);
     return jl.load();
 }
 
@@ -437,16 +437,14 @@ Json JsonLoader::load_value() {
 KeyedJson JsonLoader::load_pair() {
     assert(peek() == '"');
 
-    std::string key = load_string();
+    const std::string key = load_string();
     skip();
 
     if (!match(':')) {
         load_err("key string must be followed by a semicolon");
     }
 
-    Json val = load_value();
-
-    return KeyedJson(key, val);
+    return KeyedJson(key, load_value());
 }
 
 Json JsonLoader::load_object() {

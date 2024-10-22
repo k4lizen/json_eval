@@ -8,9 +8,8 @@
 
 class JsonTypeErr : public std::runtime_error {
 public:
-    JsonTypeErr(const std::string& msg) : std::runtime_error(msg) {}
+    explicit JsonTypeErr(const std::string& msg) : std::runtime_error(msg) {}
 };
-
 
 enum class JsonType {
     INVALID = 0,
@@ -30,16 +29,17 @@ typedef std::map<std::string, Json> JsonMap;
 typedef std::vector<Json> JsonArray;
 
 // Class used to represent a JSON object in memory.
-// To get an object of this type you probably want to use
-// JsonLoader::from_string() or JsonLoader::from_file().
 class Json {
 public:
-    Json();                        // null literal
-    Json(const bool v);            // true / false literal
-    Json(const double num);        // number literal
-    Json(const std::string& str);  // string literal
-    Json(const JsonMap& jmap);     // object
-    Json(const JsonArray& jarray); // array
+    Json();                                 // null literal
+    explicit Json(const bool v);            // true / false literal
+    explicit Json(const double num);        // number literal
+    explicit Json(const std::string& str);  // string literal
+    explicit Json(const JsonMap& jmap);     // object
+    explicit Json(const JsonArray& jarray); // array
+
+    static Json from_string(const std::string& str);
+    static Json from_file(const std::string& file_name);
 
     std::string evaluate_expr(const std::string& expr);
 
@@ -58,7 +58,7 @@ public:
     Json operator[](const std::string& key);
     bool obj_contains(const std::string& key);
     int size();
-    
+
 private:
     bool _is_null;
     std::variant<JsonMap, JsonArray, std::string, double, bool> val;

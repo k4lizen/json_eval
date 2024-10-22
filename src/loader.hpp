@@ -7,7 +7,7 @@
 
 class JsonLoadErr : public std::runtime_error {
 public:
-    JsonLoadErr(const std::string& msg) : std::runtime_error(msg) {}
+    explicit JsonLoadErr(const std::string& msg) : std::runtime_error(msg) {}
 };
 
 // Used for deserializing JSON
@@ -18,7 +18,7 @@ public:
     static Json from_file(const std::string& file_name);
 
 private:
-    JsonLoader(const std::string& data);
+    explicit JsonLoader(const std::string& data);
 
     std::string buffer;
     unsigned int line;    // line currently being parsed

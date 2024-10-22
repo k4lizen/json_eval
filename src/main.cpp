@@ -1,16 +1,17 @@
+#include "json.hpp"
 #include "loader.hpp"
 #include <iostream>
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
-        std::cout << "usage: ./json_eval <json file> <query>" << std::endl;
+        std::cout << "usage: ./json_eval <json file> <query>" << '\n';
         return 1;
     }
 
     Json json;
     try {
         // Load and parse json from file
-        json = JsonLoader::from_file((std::string(argv[1])));
+        json = Json::from_file((std::string(argv[1])));
     } catch (const JsonLoadErr& e) {
         std::cerr << e.what() << '\n';
         return 1;
