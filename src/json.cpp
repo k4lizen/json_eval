@@ -137,11 +137,11 @@ int Json::size(){
     if (_is_null) {
         return 0;
     } else if (std::holds_alternative<bool>(val)) {
-        return 1;
+        return 0;
     } else if (std::holds_alternative<double>(val)) {
-        return 1;
+        return 0;
     } else if (std::holds_alternative<std::string>(val)) {
-        return 1;
+        return 0;
     } else if (std::holds_alternative<JsonArray>(val)) {
         return std::get<JsonArray>(val).size();
     } else {
