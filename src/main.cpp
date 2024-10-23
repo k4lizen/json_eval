@@ -12,17 +12,22 @@ int main(int argc, char* argv[]) {
     try {
         // Load and parse json from file
         json = Json::from_file((std::string(argv[1])));
+        std::cout << "File OK!\n";
+
     } catch (const JsonLoadErr& e) {
         std::cerr << e.what() << '\n';
         return 1;
     } catch (const std::runtime_error& e) {
         std::cerr << e.what() << '\n';
+        return 3;
+    }
+
+    try {
+        Json result = json.evaluate_expr(std::string(argv[2]));
+        std::cout << result.to_string() << '\n';
+    } catch (const JsonTypeErr& e) {
+        std::cerr << e.what() << '\n';
         return 2;
     }
-    std::cout << "File OK!\n";
-
-    std::string result = json.evaluate_expr(std::string(argv[2]));
-    std::cout << result << "\n";
-    
     return 0;
 }

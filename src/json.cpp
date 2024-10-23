@@ -34,9 +34,8 @@ Json::Json(const JsonArray& jarray) {
     val = jarray;
 }
 
-std::string Json::evaluate_expr(const std::string& expr) {
-    JsonExpressionParser jep(*this, expr);
-    return jep.parse();
+Json Json::evaluate_expr(const std::string& expr) {
+    return JsonExpressionParser::parse(*this, expr);
 }
 
 // valid only for JsonType::ARRAY
@@ -117,7 +116,7 @@ Json Json::operator[](const std::string& key) {
         if (obj.contains(key)) {
             return obj[key];
         } else {
-            throw new JsonTypeErr("object doesn't contain provided key");
+            throw JsonTypeErr("object doesn't contain provided key");
         }
     } else {
         throw JsonTypeErr("operator[std::string] invalid, instance isnt JsonType::OBJECT");
@@ -156,4 +155,70 @@ Json Json::from_string(const std::string& str) {
 
 Json Json::from_file(const std::string& file_name) {
     return JsonLoader::from_file(file_name);
+}
+
+std::vector<std::string> Json::get_obj_keys(){
+    if (!std::holds_alternative<JsonMap>(val)) {
+        throw JsonTypeErr("get_obj_keys() called on Json which isnt JsonType::OBJECT");
+    }
+
+    JsonMap jmap = std::get<JsonMap>(val);
+    std::vector<std::string> keys;
+    keys.reserve(jmap.size());
+    for(auto it = jmap.begin(); it != jmap.end(); ++it) {
+        keys.push_back(it->first);
+    }
+    return keys;
+}
+
+std::string Json::to_string() {
+    return to_string(1);
+}
+
+// TODO: escape stuff like \n and especially \" since we want to be able to load->print->load
+std::string Json::to_string(int indent) {
+    std::string s_indent_less((indent-1)*4, ' ');
+    std::string s_indent = s_indent_less + "    ";
+    std::string res;
+
+    switch (get_type()) {
+    case JsonType::INVALID:
+        return s_indent + "< INVALID >";
+    case JsonType::OBJECT: {
+        if (size() == 0) {
+            return "{ }";
+        }
+        res = "{\n";
+        std::vector<std::string> keys = get_obj_keys();
+        int n = keys.size();
+        for(int i = 0; i < n - 1; ++i) {
+            res += s_indent + '"' + keys[i] + "\": " + (*this)[keys[i]].to_string(indent+1) + ",\n";
+        }
+        res += s_indent + '"' + keys[n - 1] + "\": " + (*this)[keys[n - 1]].to_string(indent+1) + '\n';
+        res += s_indent_less + "}";
+        return res;
+    }
+    case JsonType::ARRAY: {
+        if (size() == 0) {
+            return "[ ]";
+        }
+        res = "[\n";
+        for (int i = 0; i < size() - 1; ++i){
+            res += s_indent + (*this)[i].to_string(indent+1) + ",\n";
+        }
+        res += s_indent + (*this)[size() - 1].to_string(indent+1) + '\n';
+        res += s_indent_less + "]";
+        return res;
+    }
+    case JsonType::STRING:
+        return '"' + get_string() + '"';
+    case JsonType::NUMBER:
+        return std::to_string(get_number());
+    case JsonType::BOOL:
+        return get_bool() ? "true" : "false";
+    case JsonType::NULLVAL:
+        return "null";
+    default:
+        throw std::runtime_error("Serialization failed, impossible json type.");
+    }
 }

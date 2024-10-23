@@ -41,7 +41,7 @@ public:
     static Json from_string(const std::string& str);
     static Json from_file(const std::string& file_name);
 
-    std::string evaluate_expr(const std::string& expr);
+    Json evaluate_expr(const std::string& expr);
 
     // modifiers
     void array_add(const Json& child);
@@ -57,9 +57,15 @@ public:
     Json operator[](const int idx);
     Json operator[](const std::string& key);
     bool obj_contains(const std::string& key);
+    std::vector<std::string> get_obj_keys(); 
     int size();
 
+    // serialize the json object to a string
+    std::string to_string();
+
 private:
+    std::string to_string(int indent);
+    
     bool _is_null;
     std::variant<JsonMap, JsonArray, std::string, double, bool> val;
 };

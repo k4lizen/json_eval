@@ -1,12 +1,19 @@
 #include "expressions.hpp"
 
-JsonExpressionParser::JsonExpressionParser(const Json& json, const std::string& expression) {
+JsonExpressionParser::JsonExpressionParser(const Json& json,
+                                           const std::string& expression) {
     this->json = json;
-    this->expr = expression;
-}    
+    this->buffer = expression;
+}
 
-std::string JsonExpressionParser::parse() {
-    // probably need to reset internals here as well
+Json JsonExpressionParser::parse() {
+    current = 0;
+    line = 1;
     
-    return "happily parsed";
+    return json;
+}
+
+Json JsonExpressionParser::parse(const Json& json, const std::string& expression) {
+    JsonExpressionParser jep(json, expression);
+    return jep.parse();
 }
