@@ -175,15 +175,50 @@ std::string Json::to_string() {
     return to_string(1);
 }
 
-// TODO: escape stuff like \n and especially \" since we want to be able to load->print->load
+std::string escape_string(const std::string& str) {
+    std::string res = "";
+    for (char c : str) {
+        switch (c) {
+        case '"':
+            res += "\\\"";
+            break;
+        case '\\':
+            res += "\\\\";
+            break;
+        case '/':
+            res += "\\/";
+            break;
+        case '\b':
+            res += "\\b";
+            break;
+        case '\f':
+            res += "\\f";
+            break;
+        case '\n':
+            res += "\\n";
+            break;
+        case '\r':
+            res += "\\r";
+            break;
+        case '\t':
+            res += "\\t";
+            break;
+        // we don't need to make UTF16 surrogate pairs since
+        // we encoded them to UTF8
+        default:
+            res += c;
+        }
+    }
+    return res;
+}
+
 std::string Json::to_string(int indent) {
-    std::string s_indent_less((indent-1)*4, ' ');
+    // using 4-space indentation
+    std::string s_indent_less((indent - 1) * 4, ' ');
     std::string s_indent = s_indent_less + "    ";
     std::string res;
 
     switch (get_type()) {
-    case JsonType::INVALID:
-        return s_indent + "< INVALID >";
     case JsonType::OBJECT: {
         if (size() == 0) {
             return "{ }";
@@ -211,14 +246,15 @@ std::string Json::to_string(int indent) {
         return res;
     }
     case JsonType::STRING:
-        return '"' + get_string() + '"';
+        return '"' + escape_string(get_string()) + '"';
     case JsonType::NUMBER:
         return std::to_string(get_number());
     case JsonType::BOOL:
         return get_bool() ? "true" : "false";
     case JsonType::NULLVAL:
         return "null";
+    case JsonType::INVALID:
     default:
-        throw std::runtime_error("Serialization failed, impossible json type.");
+        throw JsonTypeErr("Serialization failed, impossible json type.");
     }
 }

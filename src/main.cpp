@@ -29,5 +29,8 @@ int main(int argc, char* argv[]) {
         std::cerr << e.what() << '\n';
         return 2;
     }
+
+    std::string str = Json::from_string(Json::from_string(json.to_string()).to_string()).to_string();
+    std::cout << str << '\n';
     return 0;
 }
