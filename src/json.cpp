@@ -1,6 +1,7 @@
 #include "json.hpp"
 #include "expressions.hpp"
 #include "loader.hpp"
+#include "utils.hpp"
 #include <cassert>
 #include <variant>
 
@@ -173,43 +174,6 @@ std::vector<std::string> Json::get_obj_keys(){
 
 std::string Json::to_string() {
     return to_string(1);
-}
-
-std::string escape_string(const std::string& str) {
-    std::string res = "";
-    for (char c : str) {
-        switch (c) {
-        case '"':
-            res += "\\\"";
-            break;
-        case '\\':
-            res += "\\\\";
-            break;
-        case '/':
-            res += "\\/";
-            break;
-        case '\b':
-            res += "\\b";
-            break;
-        case '\f':
-            res += "\\f";
-            break;
-        case '\n':
-            res += "\\n";
-            break;
-        case '\r':
-            res += "\\r";
-            break;
-        case '\t':
-            res += "\\t";
-            break;
-        // we don't need to make UTF16 surrogate pairs since
-        // we encoded them to UTF8
-        default:
-            res += c;
-        }
-    }
-    return res;
 }
 
 std::string Json::to_string(int indent) {

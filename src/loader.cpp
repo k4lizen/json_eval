@@ -6,11 +6,8 @@
 #include <stdexcept>
 
 #include "json.hpp"
+#include "utils.hpp"
 #include "loader.hpp"
-
-bool is_whitespace(char c) {
-    return c == ' ' || c == '\n' || c == '\t' || c == '\r';
-}
 
 bool is_end_control(const char c) {
     return c == ',' || c == '}' || c == ']';
@@ -56,15 +53,7 @@ std::string JsonLoader::error_line() {
     // point to the exact problematic symbol
     int padding =
         cur_line_num.size() + 1 + static_cast<int>(current) - (ln_start + 1);
-    for (int i = 0; i < padding; ++i) {
-        desc += ' ';
-    }
-    desc += '^';
-    for (int i = 0; i < 10; ++i) {
-        desc += '~';
-    }
-    desc += '\n';
-
+    desc += pretty_error_pointer(padding);
     return desc;
 }
 
