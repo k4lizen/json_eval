@@ -41,30 +41,30 @@ public:
     static Json from_string(const std::string& str);
     static Json from_file(const std::string& file_name);
 
-    Json evaluate_expr(const std::string& expr);
+    Json evaluate_expr(const std::string& expr) const;
 
     // modifiers
     void array_add(const Json& child);
     void obj_add(const KeyedJson& key_val);
 
     // accessors
-    JsonType get_type();
-    bool is_null();
-    bool get_bool();
-    double get_number();
-    std::string get_string();
+    JsonType get_type() const;
+    bool is_null() const;
+    bool get_bool() const;
+    double get_number() const;
+    std::string get_string() const;
 
-    Json operator[](const int idx);
-    Json operator[](const std::string& key);
-    bool obj_contains(const std::string& key);
-    std::vector<std::string> get_obj_keys(); 
-    int size();
+    Json operator[](const int idx) const;
+    Json operator[](const std::string& key) const;
+    bool obj_contains(const std::string& key) const;
+    std::vector<std::string> get_obj_keys() const; 
+    int size() const;
 
     // serialize the json object to a string
-    std::string to_string();
+    std::string to_string() const;
 
 private:
-    std::string to_string(int indent);
+    std::string to_string(int indent) const;
     
     bool _is_null;
     std::variant<JsonMap, JsonArray, std::string, double, bool> val;

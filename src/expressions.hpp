@@ -36,6 +36,7 @@ private:
 
     Json parse_func_or_path(const Json& json);
     Json parse_func(const Json& json, FuncType func);
+    Json parse_path(const Json& json, std::string_view beginning);
 
     Json parse_max(const Json& json);
     Json parse_min(const Json& json);

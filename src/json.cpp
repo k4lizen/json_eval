@@ -35,7 +35,7 @@ Json::Json(const JsonArray& jarray) {
     val = jarray;
 }
 
-Json Json::evaluate_expr(const std::string& expr) {
+Json Json::evaluate_expr(const std::string& expr) const {
     return JsonExpressionParser::parse(*this, expr);
 }
 
@@ -57,7 +57,7 @@ void Json::obj_add(const KeyedJson& key_val) {
     }
 }
 
-JsonType Json::get_type() {
+JsonType Json::get_type() const {
     if (_is_null) {
         return JsonType::NULLVAL;
     } else if (std::holds_alternative<bool>(val)) {
@@ -73,12 +73,12 @@ JsonType Json::get_type() {
     }
 }
 
-bool Json::is_null() {
+bool Json::is_null() const {
     return _is_null;
 }
 
 // valid only for JsonType::BOOL
-bool Json::get_bool() {
+bool Json::get_bool() const {
     if (std::holds_alternative<bool>(val)) {
         return std::get<bool>(val);
     }
@@ -86,7 +86,7 @@ bool Json::get_bool() {
 }
 
 // valid only for JsonType::NUMBER
-double Json::get_number() {
+double Json::get_number() const {
     if (std::holds_alternative<double>(val)) {
         return std::get<double>(val);
     }
@@ -94,7 +94,7 @@ double Json::get_number() {
 }
 
 // valid only for JsonType::STRING
-std::string Json::get_string() {
+std::string Json::get_string() const {
     if (std::holds_alternative<std::string>(val)) {
         return std::get<std::string>(val);
     }
@@ -102,7 +102,7 @@ std::string Json::get_string() {
 }
 
 // valid only for JsonType::ARRAY
-Json Json::operator[](const int idx) {
+Json Json::operator[](const int idx) const {
     if (std::holds_alternative<JsonArray>(val)) {
         return std::get<JsonArray>(val).at(idx);
     } else {
@@ -111,10 +111,10 @@ Json Json::operator[](const int idx) {
 }
 
 // valid only for JsonType::OBJECT
-Json Json::operator[](const std::string& key) {
+Json Json::operator[](const std::string& key) const {
     if (std::holds_alternative<JsonMap>(val)) {
         auto obj = std::get<JsonMap>(val);
-        if (obj.contains(key)) {
+        if (obj.count(key) > 0) {
             return obj[key];
         } else {
             throw JsonTypeErr("object doesn't contain provided key");
@@ -125,7 +125,7 @@ Json Json::operator[](const std::string& key) {
 }
 
 // valid only for JsonType::OBJECT
-bool Json::obj_contains(const std::string& key) {
+bool Json::obj_contains(const std::string& key) const {
     if (std::holds_alternative<JsonMap>(val)) {
         return std::get<JsonMap>(val).contains(key);
     } else {
@@ -134,7 +134,7 @@ bool Json::obj_contains(const std::string& key) {
 }
 
 // Returns the number of Jsons inside this one, shallowly
-int Json::size(){
+int Json::size() const {
     if (_is_null) {
         return 0;
     } else if (std::holds_alternative<bool>(val)) {
@@ -158,7 +158,7 @@ Json Json::from_file(const std::string& file_name) {
     return JsonLoader::from_file(file_name);
 }
 
-std::vector<std::string> Json::get_obj_keys(){
+std::vector<std::string> Json::get_obj_keys() const {
     if (!std::holds_alternative<JsonMap>(val)) {
         throw JsonTypeErr("get_obj_keys() called on Json which isnt JsonType::OBJECT");
     }
@@ -172,11 +172,11 @@ std::vector<std::string> Json::get_obj_keys(){
     return keys;
 }
 
-std::string Json::to_string() {
+std::string Json::to_string() const {
     return to_string(1);
 }
 
-std::string Json::to_string(int indent) {
+std::string Json::to_string(int indent) const {
     // using 4-space indentation
     std::string s_indent_less((indent - 1) * 4, ' ');
     std::string s_indent = s_indent_less + "    ";
