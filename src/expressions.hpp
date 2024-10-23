@@ -24,7 +24,8 @@ public:
 private:
     JsonExpressionParser(const Json& json, const std::string& expression); 
     Json parse();
-    
+
+    // TODO: can i somehow deduplicate all this
     char peek();
     char next();
     bool match(const char c);
@@ -32,7 +33,7 @@ private:
     void skip();
     bool reached_end();
 
-    [[noreturn]] void expr_error(const std::string& msg);
+    [[noreturn]] void expr_err(const std::string& msg);
 
     Json parse_func_or_path(const Json& json);
     Json parse_func(const Json& json, FuncType func);

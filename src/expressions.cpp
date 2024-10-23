@@ -2,6 +2,7 @@
 #include "json.hpp"
 #include "utils.hpp"
 #include <cassert>
+#include <charconv>
 
 JsonExpressionParser::JsonExpressionParser(const Json& json,
                                            const std::string& expression) {
@@ -62,7 +63,7 @@ void JsonExpressionParser::skip() {
     }
 }
 
-void JsonExpressionParser::expr_error(const std::string& msg) {
+void JsonExpressionParser::expr_err(const std::string& msg) {
     std::string res = "Json Expression Error: " + msg + '\n';
     res += buffer + '\n';
     res += pretty_error_pointer(current);
@@ -105,7 +106,54 @@ FuncType string_to_functype(std::string_view sv) {
     }
 }
 
+// TODO: deduplicate??
+// If false is returned, number is undefined
+bool JsonExpressionParser::match_number(double& number) {
+    const char* cbuff = buffer.c_str();
+    auto [ptr, ec] =
+        std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
+
+    if (ec == std::errc::invalid_argument) {
+        // no number at that location
+        return false;
+    }
+
+    if (ec == std::errc::result_out_of_range) {
+        expr_err("number out of range");
+    }
+
+    // valid number!
+    current = ptr - cbuff;
+    return true;
+}
+
+Json JsonExpressionParser::parse_selector_obj(const Json& json, std::string_view selector) {
+
+}
+
+Json JsonExpressionParser::parse_selector_array(const Json& json, std::string_view selector) {
+    
+}
+
+
+Json JsonExpressionParser::parse_selector(const Json& json, std::string_view selector) {
+    switch(json.get_type()) {
+    case JsonType::OBJECT:
+        return parse_selector_obj(json, selector);
+    case JsonType::ARRAY:
+        return parse_selector_array(json, selector);
+    case JsonType::NUMBER:
+    case JsonType::STRING:
+    case JsonType::BOOL:
+    case JsonType::NULLVAL:
+        return Json(JsonArray()); // empty array: [ ]
+    case JsonType::INVALID:
+        assert(0); 
+   }
+}
+
 Json JsonExpressionParser::parse_path(const Json& json, std::string_view beginning) {
+    Json res = parse_selector(beginning);
 }
 
 Json JsonExpressionParser::parse_func_or_path(const Json& json) {
@@ -119,15 +167,16 @@ Json JsonExpressionParser::parse_func_or_path(const Json& json) {
             std::string_view sv = std::string_view(buffer).substr(start, current - start);
             FuncType func = string_to_functype(sv);
             if (func == FuncType::INVALID) {
-                expr_error("invalid function name '" + std::string(sv) + "'");
+                expr_err("invalid function name '" + std::string(sv) + "'");
             }
             return parse_func(json, func);
         }
         case '.':
         case '[':
+            // now we know we are in a jsonpath
             return parse_path(json, std::string_view(buffer).substr(start, current - start));
         default:
-            expr_error("invalid character, expected one of: ( . [");        
+            break;
         }
 
         c = next();
