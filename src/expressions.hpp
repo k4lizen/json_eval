@@ -24,7 +24,7 @@ public:
 private:
     JsonExpressionParser(const Json& json, const std::string& expression); 
     JsonArray parse();
-    JsonArray parse(const JsonArray& nodelist);
+    JsonArray parse_inner();
 
     // TODO: can i somehow deduplicate all this
     char peek();
@@ -45,14 +45,14 @@ private:
     JsonArray parse_name(const JsonArray& nodelist, std::string_view name) const;
     JsonArray parse_name_selector_quoted(const JsonArray& nodelist, char quote);
     JsonArray parse_name_selector_dotted(const JsonArray& nodelist);
-    JsonArray parse_index_or_expression_selector(const JsonArray& nodelist);
+    JsonArray parse_expr_selector(const JsonArray& nodelist);
     JsonArray parse_selector(const JsonArray& nodelist);
 
     JsonArray parse_max(const JsonArray& nodelist);
     JsonArray parse_min(const JsonArray& nodelist);
     JsonArray parse_size(const JsonArray& nodelist);
 
-    Json root;
+    JsonArray rootlist;
     std::string buffer;
     unsigned int current;
     unsigned int line;

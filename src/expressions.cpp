@@ -7,7 +7,11 @@
 
 JsonExpressionParser::JsonExpressionParser(const Json& json,
                                            const std::string& expression) {
-    this->root = json;
+    // As per the spec
+    // https://www.rfc-editor.org/rfc/rfc9535#name-json-values-as-trees-of-nod
+    // we will model the result of a query as a nodelist
+    this->rootlist = JsonArray();
+    this->rootlist.push_back(json);
     this->buffer = expression;
 }
 
@@ -143,7 +147,9 @@ bool JsonExpressionParser::match_integer(int& number) {
     return true;
 }
 
-JsonArray JsonExpressionParser::parse_index_or_expression_selector(
+// For situations like [a.b[1]]
+// Number literals also count as expressions: [7]
+JsonArray JsonExpressionParser::parse_expr_selector(
     const JsonArray& nodelist) {
     assert_match('[');
 
@@ -159,48 +165,61 @@ JsonArray JsonExpressionParser::parse_index_or_expression_selector(
     //     ]
     // }
     // Should the query: "arr[0]" return ["as index"] or ["as expression"]?
-    // Luckily digits aren't allowed as the first character for dot-notation names,
-    // so we always interpret digits like literals (as index) in cases like this.
+    // Luckily digits aren't allowed as the first character for dot-notation
+    // names, so we always interpret digits like literals (as index) in cases
+    // like this.
 
     // TODO: do I want multi-indexing?
-    int idx;
-    if (!match_integer(idx)) {
-        // possibly there is an expression here which evaluates to an integer
-        // Json intj = parse_func_or_path(nodelist);
 
-        // if (intj.get_type() == JsonType::ARRAY) {
-        //     if (intj.size() != 1) {
-        //         expr_err("too many elements for array representing index");
-        //     }
-        //     intj = intj[0];
-        // }
+    JsonArray inside = parse_inner();
 
-        // if (intj.get_type() == JsonType::NUMBER) {
-        //     double pidx = intj.get_number();
-        //     if (std::floor(pidx) == pidx) {
-        //         idx = static_cast<int>(pidx);
-        //     } else {
-        //         expr_err("expression used as array index is a number but not "
-        //                  "an integer");
-        //     }
-        // } else {
-        //     expr_err(
-        //         "expression used as array index doesn't evaluate to a number");
-        // }
+    skip();
+    if (!match(']')) {
+        expr_err("expected ]");
     }
 
-    // now we have a valid index
+    // The expression needs to evaluate to a one-element array
+    // containing either an integer or a string
+    if (inside.size() != 1) {
+        expr_err("expression inside [...] must evaluate to one value, "
+                 "evaluates to: " +
+                 Json(inside).to_string());
+    }
+
+    if (inside[0].get_type() == JsonType::STRING) {
+        return parse_name(nodelist, inside[0].get_string());
+    }
+
+    if (inside[0].get_type() != JsonType::NUMBER) {
+        expr_err("expression inside [...] must evaluate to [string] or [number], evaluates to: " + Json(inside).to_string());
+    }
+
+    double number = inside[0].get_number();
+    if (std::floor(number) != number) {
+        expr_err("expression inside [...] evaluates to number (" + std::to_string(number) + "), but not an integer");
+    }
+
+    int idx = static_cast<int>(number);
     // Following https://www.rfc-editor.org/rfc/rfc9535#name-semantics-5
-    // we need to accept negative numbers as well as out of bounds
+    // We need to accept negative numbers
     if (idx < 0) {
         idx = nodelist.size() - idx;
     }
-    // return empty array on out of bounds
-    if (idx < 0 || idx >= nodelist.size()) {
-        return JsonArray();
-    }
 
-    // return nodelist[idx];
+    JsonArray res;
+    for (auto& node : nodelist) {
+        // Nothing on non-arrays
+        if (node.get_type() != JsonType::ARRAY) {
+            continue;
+        }
+        // Nothing on out of bounds
+        if (idx < 0 || idx >= node.size()) {
+            continue;
+        }
+        res.push_back(node[idx]);
+    }
+    
+    return res;
 }
 
 JsonArray JsonExpressionParser::parse_name(const JsonArray& nodelist,
@@ -225,7 +244,8 @@ bool valid_dot_name_first(unsigned char c) {
     // Since we are assuming our input is in UTF-8 we don't
     // need to check for surrogates.
     // We allow all UTF-8 bytes with the (c > 127) check.
-    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_' || c > 127;
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_' ||
+           c > 127;
 }
 
 bool valid_dot_name_char(unsigned char c) {
@@ -263,7 +283,7 @@ JsonExpressionParser::parse_name_selector_dotted(const JsonArray& nodelist) {
     if (!valid_dot_name_first(c)) {
         expr_err("invalid first character for dot-notation name selector");
     }
-    
+
     while (valid_dot_name_char(c)) {
         c = next(); // bounds checking is implicit
     }
@@ -313,7 +333,6 @@ JsonArray JsonExpressionParser::parse_selector(const JsonArray& nodelist) {
 
     // II) We also have the dot-shorthand: .something
     //     denoting an object key
-    // TODO: check if ["a"]b is okay, some implementations allow it
 
     // No error should be produced when applying indexing to objects
     // or keying to arrays, simply output nothing.
@@ -330,7 +349,7 @@ JsonArray JsonExpressionParser::parse_selector(const JsonArray& nodelist) {
             return parse_name_selector_quoted(nodelist, pn);
         } else {
             // I) 2. && 3.
-            return parse_index_or_expression_selector(nodelist);
+            return parse_expr_selector(nodelist);
         }
     } else {
         // II)
@@ -341,15 +360,14 @@ JsonArray JsonExpressionParser::parse_selector(const JsonArray& nodelist) {
 JsonArray JsonExpressionParser::parse_path(const JsonArray& nodelist,
                                            std::string_view obj_beginning) {
     char c = peek();
-    assert (c == '.' || c == '[');
-    
+    assert(c == '.' || c == '[');
+
     JsonArray res = nodelist;
     if (obj_beginning != "") {
         // We need to parse this before we continue with this->current.
         // Doing it this way is an optimization circumventing the fact that
         // we needed to figure out whether this was a function call or
         // a path expression.
-
         res = parse_name(res, obj_beginning);
     }
 
@@ -375,7 +393,7 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
         if (c != '.' && c != '[') {
             expr_err("invalid character, expected . or [");
         }
-        
+
         return parse_path(nodelist, "");
     }
     // Posibilities:
@@ -403,12 +421,14 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
     }
 
     int start = current;
-    // allowed function name characters are a subset of allowed dot name characters
+    // allowed function name characters are a subset of allowed dot name
+    // characters
     if (!valid_dot_name_first(c)) {
-        expr_err("invalid first character in dot-notation name selector or function name");
+        expr_err("invalid first character in dot-notation name selector or "
+                 "function name");
     }
     c = next();
-    
+
     while (!reached_end()) {
         switch (c) {
         case '(': {
@@ -430,10 +450,12 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
         case '-':
         case '*':
         case '/':
-            return parse_name(nodelist, std::string_view(buffer).substr(start, current - start));
+            return parse_name(nodelist, std::string_view(buffer).substr(
+                                            start, current - start));
         default:
             if (!valid_dot_name_char(c)) {
-                expr_err("invalid character in dot-notation name selector or function name");
+                expr_err("invalid character in dot-notation name selector or "
+                         "function name");
             }
         }
 
@@ -441,24 +463,28 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
     }
 
     // something<end of string>
-    return parse_name(nodelist, std::string_view(buffer).substr(start, current - start));
+    return parse_name(nodelist,
+                      std::string_view(buffer).substr(start, current - start));
 }
 
-JsonArray JsonExpressionParser::parse(const JsonArray& nodelist) { 
+// Can be a subexpression
+JsonArray JsonExpressionParser::parse_inner() {
     // TODO: figure out binary operators here
     skip();
-    return parse_func_or_path(nodelist);
+    return parse_func_or_path(rootlist);
 }
 
-
+// The user supplied expression
 JsonArray JsonExpressionParser::parse() {
     current = 0;
     line = 1;
 
-    // As per the spec
-    // https://www.rfc-editor.org/rfc/rfc9535#name-json-values-as-trees-of-nod
-    // we will model the result of a query as a nodelist
-    JsonArray jarr;
-    jarr.push_back(root);
-    return parse(jarr);
+    JsonArray res = parse_inner();
+
+    skip();
+    if (!reached_end()) {
+        expr_err("expected end of expression");
+    }
+
+    return res;
 }
