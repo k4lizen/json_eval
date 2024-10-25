@@ -24,6 +24,7 @@ public:
 private:
     JsonExpressionParser(const Json& json, const std::string& expression); 
     JsonArray parse();
+    JsonArray parse(const JsonArray& nodelist);
 
     // TODO: can i somehow deduplicate all this
     char peek();

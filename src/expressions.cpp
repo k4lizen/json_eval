@@ -106,7 +106,7 @@ JsonArray JsonExpressionParser::parse_func(const JsonArray& nodelist,
     case FuncType::SIZE:
         return parse_size(nodelist);
     default:
-        assert(0); // TODO: this is ugly, but what do
+        assert(0); // TODO: this is ugly
     }
 }
 
@@ -146,6 +146,21 @@ bool JsonExpressionParser::match_integer(int& number) {
 JsonArray JsonExpressionParser::parse_index_or_expression_selector(
     const JsonArray& nodelist) {
     assert_match('[');
+
+    // Weirdness due to the the spec extension coming from two facts:
+    // 1. We allow "a" as a valid path, no need for "$.a"
+    // 2. We allow expressions inside [ ]
+    // Json:
+    // {
+    //     "0": 1,
+    //     "arr": [
+    //             "as index",
+    //             "as expression"
+    //     ]
+    // }
+    // Should the query: "arr[0]" return ["as index"] or ["as expression"]?
+    // Luckily digits aren't allowed as the first character for dot-notation names,
+    // so we always interpret digits like literals (as index) in cases like this.
 
     // TODO: do I want multi-indexing?
     int idx;
@@ -199,10 +214,44 @@ JsonArray JsonExpressionParser::parse_name(const JsonArray& nodelist,
     return res;
 }
 
-bool valid_dot_notation_char(char c) {
-    // The rfc doesn't precisely define which characters are allowed in
-    // dot-notation we will allow alphanumerics (locale specific) and _
-    return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+bool valid_dot_name_first(unsigned char c) {
+    // name-first          = ALPHA /
+    //                       "_"   /
+    //                       %x80-D7FF /
+    //                          ; skip surrogate code points
+    //                       %xE000-10FFFF
+    // ALPHA               = %x41-5A / %x61-7A    ; A-Z / a-z
+
+    // Since we are assuming our input is in UTF-8 we don't
+    // need to check for surrogates.
+    // We allow all UTF-8 bytes with the (c > 127) check.
+    return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_' || c > 127;
+}
+
+bool valid_dot_name_char(unsigned char c) {
+    // name-char           = name-first / DIGIT
+    // DIGIT               = %x30-39              ; 0-9
+
+    return valid_dot_name_first(c) || ('0' <= c && c <= '9');
+}
+
+bool valid_dot_notation_name(std::string_view name) {
+    // https://www.rfc-editor.org/rfc/rfc9535#section-2.5.1.1
+    // member-name-shorthand = name-first *name-char
+
+    if (name.empty())
+        return false;
+
+    if (!valid_dot_name_first(name[0])) {
+        return false;
+    }
+
+    for (unsigned int i = 1; i < name.size(); ++i) {
+        if (!valid_dot_name_char(name[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 JsonArray
@@ -211,8 +260,12 @@ JsonExpressionParser::parse_name_selector_dotted(const JsonArray& nodelist) {
 
     int start = current;
     char c = peek();
-    while (!reached_end() && valid_dot_notation_char(c)) {
-        c = next();
+    if (!valid_dot_name_first(c)) {
+        expr_err("invalid first character for dot-notation name selector");
+    }
+    
+    while (valid_dot_name_char(c)) {
+        c = next(); // bounds checking is implicit
     }
 
     return parse_name(nodelist,
@@ -287,6 +340,9 @@ JsonArray JsonExpressionParser::parse_selector(const JsonArray& nodelist) {
 
 JsonArray JsonExpressionParser::parse_path(const JsonArray& nodelist,
                                            std::string_view obj_beginning) {
+    char c = peek();
+    assert (c == '.' || c == '[');
+    
     JsonArray res = nodelist;
     if (obj_beginning != "") {
         // We need to parse this before we continue with this->current.
@@ -294,27 +350,69 @@ JsonArray JsonExpressionParser::parse_path(const JsonArray& nodelist,
         // we needed to figure out whether this was a function call or
         // a path expression.
 
-        // Check that we are indeed in an object
         res = parse_name(res, obj_beginning);
     }
 
-    char c = peek();
     while (!reached_end() && (c == '.' || c == '[')) {
         // TODO: a copy happens here (trust), how to optimize?
-        // current gets advanced inside \/
+        // this->current gets advanced inside \/
         res = parse_selector(res);
+        skip();
+        c = peek();
     }
 
     return res;
 }
 
 JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
+    char c;
+    // $ means we are for sure in a path
+    if (match('$')) {
+        // jsonpath-query      = root-identifier segments
+        // segments            = *(S segment)
+        skip();
+        c = peek();
+        if (c != '.' && c != '[') {
+            expr_err("invalid character, expected . or [");
+        }
+        
+        return parse_path(nodelist, "");
+    }
+    // Posibilities:
+    // [
+    //     spec segment
+    // something(
+    //     function call
+    // something.
+    // something[
+    //     dot-notation name selector
+    //     (without dot since it's at the beginning of the path)
+    //     (this is our extension, not in the spec)
+    // something<end of string>
+    //     same as above
+    // something+ (et al.)
+    //     same as above
+
+    // TODO:
+    // something +, something [, something .
+    // aren't allowed but they should be
+
+    c = peek();
+    if (c == '[') {
+        return parse_path(nodelist, "");
+    }
+
     int start = current;
-    char c = peek();
+    // allowed function name characters are a subset of allowed dot name characters
+    if (!valid_dot_name_first(c)) {
+        expr_err("invalid first character in dot-notation name selector or function name");
+    }
+    c = next();
+    
     while (!reached_end()) {
         switch (c) {
         case '(': {
-            // function call (min, max, size etc...)
+            // something( function
             std::string_view sv =
                 std::string_view(buffer).substr(start, current - start);
             FuncType func = string_to_functype(sv);
@@ -325,31 +423,33 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
         }
         case '.':
         case '[':
-            // now we know we are in a jsonpath
+            // something. or something[ path
             return parse_path(nodelist, std::string_view(buffer).substr(
                                             start, current - start));
-        case ' ':
-            // TODO
-            break;
         case '+':
-            // TODO
-            // etc
-            break;
+        case '-':
+        case '*':
+        case '/':
+            return parse_name(nodelist, std::string_view(buffer).substr(start, current - start));
         default:
-            // If this is the end of the expression, this will be a name.
-            // Our built-in functions also abide by this.
-            if (!valid_dot_notation_char(c)) {
-                expr_err(std::string("unexpected character: ") + c);
+            if (!valid_dot_name_char(c)) {
+                expr_err("invalid character in dot-notation name selector or function name");
             }
         }
 
         c = next();
     }
 
-    // We reached end without hitting any control characters,
-    // interpreting this as a dot-notation name selector
+    // something<end of string>
     return parse_name(nodelist, std::string_view(buffer).substr(start, current - start));
 }
+
+JsonArray JsonExpressionParser::parse(const JsonArray& nodelist) { 
+    // TODO: figure out binary operators here
+    skip();
+    return parse_func_or_path(nodelist);
+}
+
 
 JsonArray JsonExpressionParser::parse() {
     current = 0;
@@ -360,5 +460,5 @@ JsonArray JsonExpressionParser::parse() {
     // we will model the result of a query as a nodelist
     JsonArray jarr;
     jarr.push_back(root);
-    return parse_func_or_path(jarr);
+    return parse(jarr);
 }
