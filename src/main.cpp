@@ -1,3 +1,4 @@
+#include "expressions.hpp"
 #include "json.hpp"
 #include "loader.hpp"
 #include <iostream>
@@ -28,9 +29,10 @@ int main(int argc, char* argv[]) {
     } catch (const JsonTypeErr& e) {
         std::cerr << e.what() << '\n';
         return 2;
+    } catch (const JsonExprErr& e) {
+        std::cerr << e.what() << '\n';
+        return 7;
     }
 
-    std::string str = Json::from_string(Json::from_string(json.to_string()).to_string()).to_string();
-    std::cout << str << '\n';
     return 0;
 }

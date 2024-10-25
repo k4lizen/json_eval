@@ -19,14 +19,15 @@ enum class FuncType {
 // with slight differences
 class JsonExpressionParser {
 public:
-    static Json parse(const Json& json, const std::string& expression);
+    static JsonArray parse(const Json& json, const std::string& expression);
 
 private:
     JsonExpressionParser(const Json& json, const std::string& expression); 
-    Json parse();
+    JsonArray parse();
 
     // TODO: can i somehow deduplicate all this
     char peek();
+    char peekNext();
     char next();
     bool match(const char c);
     void assert_match(const char c);
@@ -35,13 +36,20 @@ private:
 
     [[noreturn]] void expr_err(const std::string& msg);
 
-    Json parse_func_or_path(const Json& json);
-    Json parse_func(const Json& json, FuncType func);
-    Json parse_path(const Json& json, std::string_view beginning);
+    JsonArray parse_func_or_path(const JsonArray& nodelist);
+    JsonArray parse_func(const JsonArray& nodelist, FuncType func);
+    JsonArray parse_path(const JsonArray& nodelist, std::string_view obj_beginning);
 
-    Json parse_max(const Json& json);
-    Json parse_min(const Json& json);
-    Json parse_size(const Json& json);
+    bool match_integer(int& number);
+    JsonArray parse_name(const JsonArray& nodelist, std::string_view name) const;
+    JsonArray parse_name_selector_quoted(const JsonArray& nodelist, char quote);
+    JsonArray parse_name_selector_dotted(const JsonArray& nodelist);
+    JsonArray parse_index_or_expression_selector(const JsonArray& nodelist);
+    JsonArray parse_selector(const JsonArray& nodelist);
+
+    JsonArray parse_max(const JsonArray& nodelist);
+    JsonArray parse_min(const JsonArray& nodelist);
+    JsonArray parse_size(const JsonArray& nodelist);
 
     Json root;
     std::string buffer;

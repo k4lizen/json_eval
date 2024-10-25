@@ -36,7 +36,7 @@ Json::Json(const JsonArray& jarray) {
 }
 
 Json Json::evaluate_expr(const std::string& expr) const {
-    return JsonExpressionParser::parse(*this, expr);
+    return Json(JsonExpressionParser::parse(*this, expr));
 }
 
 // valid only for JsonType::ARRAY
@@ -110,12 +110,26 @@ Json Json::operator[](const int idx) const {
     }
 }
 
-// valid only for JsonType::OBJECT
+// valid only for JsonType::OBJECT, must contain key
 Json Json::operator[](const std::string& key) const {
     if (std::holds_alternative<JsonMap>(val)) {
         auto obj = std::get<JsonMap>(val);
-        if (obj.count(key) > 0) {
-            return obj[key];
+        if (auto kv = obj.find(key); kv != obj.end()) {
+            return kv->second;
+        } else {
+            throw JsonTypeErr("object doesn't contain provided key");
+        }
+    } else {
+        throw JsonTypeErr("operator[std::string] invalid, instance isnt JsonType::OBJECT");
+    }
+}
+
+// valid only for JsonType::OBJECT, must contain key
+Json Json::operator[](std::string_view key) const {
+    if (std::holds_alternative<JsonMap>(val)) {
+        auto obj = std::get<JsonMap>(val);
+        if (auto kv = obj.find(key); kv != obj.end()) {
+            return kv->second;
         } else {
             throw JsonTypeErr("object doesn't contain provided key");
         }
@@ -126,6 +140,14 @@ Json Json::operator[](const std::string& key) const {
 
 // valid only for JsonType::OBJECT
 bool Json::obj_contains(const std::string& key) const {
+    if (std::holds_alternative<JsonMap>(val)) {
+        return std::get<JsonMap>(val).contains(key);
+    } else {
+        throw JsonTypeErr("obj_contains called on Json which isnt JsonType::OBJECT");
+    }
+}
+
+bool Json::obj_contains(std::string_view key) const {
     if (std::holds_alternative<JsonMap>(val)) {
         return std::get<JsonMap>(val).contains(key);
     } else {
@@ -166,8 +188,8 @@ std::vector<std::string> Json::get_obj_keys() const {
     JsonMap jmap = std::get<JsonMap>(val);
     std::vector<std::string> keys;
     keys.reserve(jmap.size());
-    for(auto it = jmap.begin(); it != jmap.end(); ++it) {
-        keys.push_back(it->first);
+    for(auto& it : jmap) {
+        keys.push_back(it.first);
     }
     return keys;
 }

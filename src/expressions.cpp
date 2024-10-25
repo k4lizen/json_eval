@@ -3,6 +3,7 @@
 #include "utils.hpp"
 #include <cassert>
 #include <charconv>
+#include <cmath>
 
 JsonExpressionParser::JsonExpressionParser(const Json& json,
                                            const std::string& expression) {
@@ -10,7 +11,8 @@ JsonExpressionParser::JsonExpressionParser(const Json& json,
     this->buffer = expression;
 }
 
-Json JsonExpressionParser::parse(const Json& json, const std::string& expression) {
+JsonArray JsonExpressionParser::parse(const Json& json,
+                                      const std::string& expression) {
     JsonExpressionParser jep(json, expression);
     return jep.parse();
 }
@@ -24,6 +26,7 @@ bool JsonExpressionParser::match(const char c) {
     return false;
 }
 
+// TODO: is this good design?
 void JsonExpressionParser::assert_match(const char c) {
     assert(peek() == c);
     next();
@@ -38,9 +41,21 @@ char JsonExpressionParser::peek() {
     return buffer[current];
 }
 
+char JsonExpressionParser::peekNext() {
+    if (current + 1 >= buffer.size()) {
+        return '\0';
+    }
+
+    return buffer[current + 1];
+}
+
+// TODO: make same definition in loader.cpp? valid there?
 // Advance and return next character
 char JsonExpressionParser::next() {
-    if (reached_end() || current + 1 >= buffer.size()) {
+    if (current + 1 >= buffer.size()) {
+        if (current < buffer.size()) {
+            current++;
+        }
         return '\0';
     }
 
@@ -70,25 +85,26 @@ void JsonExpressionParser::expr_err(const std::string& msg) {
     throw JsonExprErr(res);
 }
 
-Json JsonExpressionParser::parse_max(const Json& json) {
+JsonArray JsonExpressionParser::parse_max(const JsonArray& nodelist) {
     exit(1);
 }
-Json JsonExpressionParser::parse_min(const Json& json) {
+JsonArray JsonExpressionParser::parse_min(const JsonArray& nodelist) {
     exit(1);
 }
-Json JsonExpressionParser::parse_size(const Json& json) {
+JsonArray JsonExpressionParser::parse_size(const JsonArray& nodelist) {
     exit(1);
 }
 
-Json JsonExpressionParser::parse_func(const Json& json, FuncType func) {
+JsonArray JsonExpressionParser::parse_func(const JsonArray& nodelist,
+                                           FuncType func) {
     assert_match('(');
-    switch(func) {
+    switch (func) {
     case FuncType::MAX:
-        return parse_max(json);
+        return parse_max(nodelist);
     case FuncType::MIN:
-        return parse_min(json);
+        return parse_min(nodelist);
     case FuncType::SIZE:
-        return parse_size(json);
+        return parse_size(nodelist);
     default:
         assert(0); // TODO: this is ugly, but what do
     }
@@ -108,7 +124,7 @@ FuncType string_to_functype(std::string_view sv) {
 
 // TODO: deduplicate??
 // If false is returned, number is undefined
-bool JsonExpressionParser::match_number(double& number) {
+bool JsonExpressionParser::match_integer(int& number) {
     const char* cbuff = buffer.c_str();
     auto [ptr, ec] =
         std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
@@ -127,68 +143,222 @@ bool JsonExpressionParser::match_number(double& number) {
     return true;
 }
 
-Json JsonExpressionParser::parse_selector_obj(const Json& json, std::string_view selector) {
+JsonArray JsonExpressionParser::parse_index_or_expression_selector(
+    const JsonArray& nodelist) {
+    assert_match('[');
 
+    // TODO: do I want multi-indexing?
+    int idx;
+    if (!match_integer(idx)) {
+        // possibly there is an expression here which evaluates to an integer
+        // Json intj = parse_func_or_path(nodelist);
+
+        // if (intj.get_type() == JsonType::ARRAY) {
+        //     if (intj.size() != 1) {
+        //         expr_err("too many elements for array representing index");
+        //     }
+        //     intj = intj[0];
+        // }
+
+        // if (intj.get_type() == JsonType::NUMBER) {
+        //     double pidx = intj.get_number();
+        //     if (std::floor(pidx) == pidx) {
+        //         idx = static_cast<int>(pidx);
+        //     } else {
+        //         expr_err("expression used as array index is a number but not "
+        //                  "an integer");
+        //     }
+        // } else {
+        //     expr_err(
+        //         "expression used as array index doesn't evaluate to a number");
+        // }
+    }
+
+    // now we have a valid index
+    // Following https://www.rfc-editor.org/rfc/rfc9535#name-semantics-5
+    // we need to accept negative numbers as well as out of bounds
+    if (idx < 0) {
+        idx = nodelist.size() - idx;
+    }
+    // return empty array on out of bounds
+    if (idx < 0 || idx >= nodelist.size()) {
+        return JsonArray();
+    }
+
+    // return nodelist[idx];
 }
 
-Json JsonExpressionParser::parse_selector_array(const Json& json, std::string_view selector) {
-    
+JsonArray JsonExpressionParser::parse_name(const JsonArray& nodelist,
+                                           std::string_view name) const {
+    JsonArray res;
+    for (auto& node : nodelist) {
+        if (node.get_type() == JsonType::OBJECT && node.obj_contains(name)) {
+            res.push_back(node[name]);
+        }
+    }
+    return res;
 }
 
-
-Json JsonExpressionParser::parse_selector(const Json& json, std::string_view selector) {
-    switch(json.get_type()) {
-    case JsonType::OBJECT:
-        return parse_selector_obj(json, selector);
-    case JsonType::ARRAY:
-        return parse_selector_array(json, selector);
-    case JsonType::NUMBER:
-    case JsonType::STRING:
-    case JsonType::BOOL:
-    case JsonType::NULLVAL:
-        return Json(JsonArray()); // empty array: [ ]
-    case JsonType::INVALID:
-        assert(0); 
-   }
+bool valid_dot_notation_char(char c) {
+    // The rfc doesn't precisely define which characters are allowed in
+    // dot-notation we will allow alphanumerics (locale specific) and _
+    return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
 }
 
-Json JsonExpressionParser::parse_path(const Json& json, std::string_view beginning) {
-    Json res = parse_selector(beginning);
-}
+JsonArray
+JsonExpressionParser::parse_name_selector_dotted(const JsonArray& nodelist) {
+    assert_match('.');
 
-Json JsonExpressionParser::parse_func_or_path(const Json& json) {
     int start = current;
+    char c = peek();
+    while (!reached_end() && valid_dot_notation_char(c)) {
+        c = next();
+    }
+
+    return parse_name(nodelist,
+                      std::string_view(buffer).substr(start, current - start));
+}
+
+JsonArray
+JsonExpressionParser::parse_name_selector_quoted(const JsonArray& nodelist,
+                                                 char quote) {
+    assert_match('[');
+    assert_match(quote);
+
+    int start = current;
+    char c = peek();
+    while (!reached_end() && c != quote) {
+        c = next();
+    }
+
+    // either the quote or the ] isn't closed
+    if (reached_end()) {
+        expr_err("query ended early: unterminated name selector");
+    }
+
+    std::string_view name =
+        std::string_view(buffer).substr(start, current - start);
+    assert_match(quote);
+    if (!match(']')) {
+        expr_err("unterminated name selector, expected ]");
+    }
+    return parse_name(nodelist, name);
+}
+
+JsonArray JsonExpressionParser::parse_selector(const JsonArray& nodelist) {
+    if (nodelist.empty()) {
+        return JsonArray();
+    }
+
+    // I) We have three valid selectors inside brackets:
+    // 1. (single or double) quote escaped: ["some field"]; ['some field']
+    //     denoting an object key
+    // 2. integer: [10]
+    //     denoting an array index
+    // 3. expression (non-rfc extension): [a.b["c"]]
+    //     which evaluates to one 1. or 2.
+
+    // II) We also have the dot-shorthand: .something
+    //     denoting an object key
+    // TODO: check if ["a"]b is okay, some implementations allow it
+
+    // No error should be produced when applying indexing to objects
+    // or keying to arrays, simply output nothing.
+    // See https://www.rfc-editor.org/rfc/rfc9535#name-semantics-3
+    // and https://www.rfc-editor.org/rfc/rfc9535#name-semantics-5
+
+    char p = peek();
+    assert(p == '[' || p == '.');
+    char pn = peekNext();
+    if (p == '[') {
+        // I)
+        if (pn == '\'' || pn == '"') {
+            // I) 1.
+            return parse_name_selector_quoted(nodelist, pn);
+        } else {
+            // I) 2. && 3.
+            return parse_index_or_expression_selector(nodelist);
+        }
+    } else {
+        // II)
+        return parse_name_selector_dotted(nodelist);
+    }
+}
+
+JsonArray JsonExpressionParser::parse_path(const JsonArray& nodelist,
+                                           std::string_view obj_beginning) {
+    JsonArray res = nodelist;
+    if (obj_beginning != "") {
+        // We need to parse this before we continue with this->current.
+        // Doing it this way is an optimization circumventing the fact that
+        // we needed to figure out whether this was a function call or
+        // a path expression.
+
+        // Check that we are indeed in an object
+        res = parse_name(res, obj_beginning);
+    }
 
     char c = peek();
-    while(!reached_end()) {
-        switch(c) {
+    while (!reached_end() && (c == '.' || c == '[')) {
+        // TODO: a copy happens here (trust), how to optimize?
+        // current gets advanced inside \/
+        res = parse_selector(res);
+    }
+
+    return res;
+}
+
+JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
+    int start = current;
+    char c = peek();
+    while (!reached_end()) {
+        switch (c) {
         case '(': {
             // function call (min, max, size etc...)
-            std::string_view sv = std::string_view(buffer).substr(start, current - start);
+            std::string_view sv =
+                std::string_view(buffer).substr(start, current - start);
             FuncType func = string_to_functype(sv);
             if (func == FuncType::INVALID) {
                 expr_err("invalid function name '" + std::string(sv) + "'");
             }
-            return parse_func(json, func);
+            return parse_func(nodelist, func);
         }
         case '.':
         case '[':
             // now we know we are in a jsonpath
-            return parse_path(json, std::string_view(buffer).substr(start, current - start));
-        default:
+            return parse_path(nodelist, std::string_view(buffer).substr(
+                                            start, current - start));
+        case ' ':
+            // TODO
             break;
+        case '+':
+            // TODO
+            // etc
+            break;
+        default:
+            // If this is the end of the expression, this will be a name.
+            // Our built-in functions also abide by this.
+            if (!valid_dot_notation_char(c)) {
+                expr_err(std::string("unexpected character: ") + c);
+            }
         }
 
         c = next();
     }
 
-    return Json();
+    // We reached end without hitting any control characters,
+    // interpreting this as a dot-notation name selector
+    return parse_name(nodelist, std::string_view(buffer).substr(start, current - start));
 }
 
-Json JsonExpressionParser::parse() {
+JsonArray JsonExpressionParser::parse() {
     current = 0;
     line = 1;
 
-    return parse_func_or_path(root);
+    // As per the spec
+    // https://www.rfc-editor.org/rfc/rfc9535#name-json-values-as-trees-of-nod
+    // we will model the result of a query as a nodelist
+    JsonArray jarr;
+    jarr.push_back(root);
+    return parse_func_or_path(jarr);
 }
-
