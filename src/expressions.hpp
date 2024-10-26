@@ -35,7 +35,6 @@ private:
     JsonArray parse();
     JsonArray parse_inner();
 
-    // TODO: can i somehow deduplicate all this
     [[noreturn]] void expr_err(const std::string& msg);
 
     JsonArray parse_func_or_path();

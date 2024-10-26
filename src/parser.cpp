@@ -34,7 +34,6 @@ char Parser::peekNext() {
     return buffer[current + 1];
 }
 
-// TODO: make same definition in loader.cpp? valid there?
 // Advance and return next character
 char Parser::next() {
     if (current + 1 >= buffer.size()) {
