@@ -439,7 +439,7 @@ KeyedJson JsonLoader::load_pair() {
 Json JsonLoader::load_object() {
     assert_match('{');
 
-    Json node((JsonMap()));
+    Json node((JsonObject()));
 
     // empty object
     skip();

@@ -26,7 +26,7 @@ typedef std::pair<std::string, Json> KeyedJson;
 // The map is good for wide jsons. For deep jsons, vector would be better.
 // Could be optimized with trie
 // Using transparent comparator to allow for std::string_view
-typedef std::map<std::string, Json, std::less<>> JsonMap; // TODO: rename to JsonObject
+typedef std::map<std::string, Json, std::less<>> JsonObject;
 typedef std::vector<Json> JsonArray;
 
 // Class used to represent a JSON object in memory.
@@ -36,7 +36,7 @@ public:
     explicit Json(const bool v);            // true / false literal
     explicit Json(const double num);        // number literal
     explicit Json(const std::string& str);  // string literal
-    explicit Json(const JsonMap& jmap);     // object
+    explicit Json(const JsonObject& jmap);     // object
     explicit Json(const JsonArray& jarray); // array
 
     static Json from_string(const std::string& str);
@@ -55,7 +55,7 @@ public:
     double get_number() const;
     std::string get_string() const;
     JsonArray get_array() const;
-    JsonMap get_obj() const;
+    JsonObject get_obj() const;
 
     Json operator[](const int idx) const;
     Json operator[](const std::string& key) const;
@@ -72,5 +72,5 @@ private:
     std::string to_string(int indent) const;
     
     bool _is_null;
-    std::variant<JsonMap, JsonArray, std::string, double, bool> val;
+    std::variant<JsonObject, JsonArray, std::string, double, bool> val;
 };

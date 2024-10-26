@@ -27,9 +27,9 @@ Json::Json(const std::string& str) {
     val = str;
 }
 
-Json::Json(const JsonMap& jmap) {
+Json::Json(const JsonObject& jobj) {
     _is_null = false;
-    val = jmap;
+    val = jobj;
 }
 
 Json::Json(const JsonArray& jarray) {
@@ -52,8 +52,8 @@ void Json::array_add(const Json& elem) {
 
 // valid only for JsonType::OBJECT
 void Json::obj_add(const KeyedJson& key_val) {
-    if (std::holds_alternative<JsonMap>(val)) {
-        std::get<JsonMap>(val)[key_val.first] = key_val.second;
+    if (std::holds_alternative<JsonObject>(val)) {
+        std::get<JsonObject>(val)[key_val.first] = key_val.second;
     } else {
         throw JsonTypeErr("cannot obj_add(), instance isnt JsonType::OBJECT");
     }
@@ -110,9 +110,9 @@ JsonArray Json::get_array() const {
     throw JsonTypeErr("get_array() called on Json which isnt JsonType::ARRAY");
 }
 
-JsonMap Json::get_obj() const {
-    if (std::holds_alternative<JsonMap>(val)) {
-        return std::get<JsonMap>(val);
+JsonObject Json::get_obj() const {
+    if (std::holds_alternative<JsonObject>(val)) {
+        return std::get<JsonObject>(val);
     }
     throw JsonTypeErr("get_obj() called on Json which isnt JsonType::OBJECT");
 }
@@ -128,8 +128,8 @@ Json Json::operator[](const int idx) const {
 
 // valid only for JsonType::OBJECT, must contain key
 Json Json::operator[](const std::string& key) const {
-    if (std::holds_alternative<JsonMap>(val)) {
-        auto obj = std::get<JsonMap>(val);
+    if (std::holds_alternative<JsonObject>(val)) {
+        auto obj = std::get<JsonObject>(val);
         if (auto kv = obj.find(key); kv != obj.end()) {
             return kv->second;
         } else {
@@ -142,8 +142,8 @@ Json Json::operator[](const std::string& key) const {
 
 // valid only for JsonType::OBJECT, must contain key
 Json Json::operator[](std::string_view key) const {
-    if (std::holds_alternative<JsonMap>(val)) {
-        auto obj = std::get<JsonMap>(val);
+    if (std::holds_alternative<JsonObject>(val)) {
+        auto obj = std::get<JsonObject>(val);
         if (auto kv = obj.find(key); kv != obj.end()) {
             return kv->second;
         } else {
@@ -156,16 +156,16 @@ Json Json::operator[](std::string_view key) const {
 
 // valid only for JsonType::OBJECT
 bool Json::obj_contains(const std::string& key) const {
-    if (std::holds_alternative<JsonMap>(val)) {
-        return std::get<JsonMap>(val).contains(key);
+    if (std::holds_alternative<JsonObject>(val)) {
+        return std::get<JsonObject>(val).contains(key);
     } else {
         throw JsonTypeErr("obj_contains called on Json which isnt JsonType::OBJECT");
     }
 }
 
 bool Json::obj_contains(std::string_view key) const {
-    if (std::holds_alternative<JsonMap>(val)) {
-        return std::get<JsonMap>(val).contains(key);
+    if (std::holds_alternative<JsonObject>(val)) {
+        return std::get<JsonObject>(val).contains(key);
     } else {
         throw JsonTypeErr("obj_contains called on Json which isnt JsonType::OBJECT");
     }
@@ -184,7 +184,7 @@ int Json::size() const {
     } else if (std::holds_alternative<JsonArray>(val)) {
         return std::get<JsonArray>(val).size();
     } else {
-        return std::get<JsonMap>(val).size();
+        return std::get<JsonObject>(val).size();
     }
 }
 
@@ -197,14 +197,14 @@ Json Json::from_file(const std::string& file_name) {
 }
 
 std::vector<std::string> Json::get_obj_keys() const {
-    if (!std::holds_alternative<JsonMap>(val)) {
+    if (!std::holds_alternative<JsonObject>(val)) {
         throw JsonTypeErr("get_obj_keys() called on Json which isnt JsonType::OBJECT");
     }
 
-    JsonMap jmap = std::get<JsonMap>(val);
+    JsonObject jobj = std::get<JsonObject>(val);
     std::vector<std::string> keys;
-    keys.reserve(jmap.size());
-    for(auto& it : jmap) {
+    keys.reserve(jobj.size());
+    for(auto& it : jobj) {
         keys.push_back(it.first);
     }
     return keys;
