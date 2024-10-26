@@ -22,67 +22,6 @@ JsonArray JsonExpressionParser::parse(const Json& json,
     return jep.parse();
 }
 
-// Advance only if the next character matches param
-bool JsonExpressionParser::match(const char c) {
-    if (peek() == c) {
-        next();
-        return true;
-    }
-    return false;
-}
-
-// TODO: is this good design?
-void JsonExpressionParser::assert_match(const char c) {
-    assert(peek() == c);
-    next();
-}
-
-// Return current character
-char JsonExpressionParser::peek() {
-    if (reached_end()) {
-        return '\0';
-    }
-
-    return buffer[current];
-}
-
-char JsonExpressionParser::peekNext() {
-    if (current + 1 >= buffer.size()) {
-        return '\0';
-    }
-
-    return buffer[current + 1];
-}
-
-// TODO: make same definition in loader.cpp? valid there?
-// Advance and return next character
-char JsonExpressionParser::next() {
-    if (current + 1 >= buffer.size()) {
-        if (current < buffer.size()) {
-            current++;
-        }
-        return '\0';
-    }
-
-    return buffer[++current];
-}
-
-bool JsonExpressionParser::reached_end() {
-    return current >= buffer.size();
-}
-
-// Skip all whitespace
-void JsonExpressionParser::skip() {
-    // bounds checking is happening in peek() and next()
-    char c = peek();
-    while (is_whitespace(c)) {
-        if (c == '\n') {
-            line++;
-        }
-        c = next();
-    }
-}
-
 void JsonExpressionParser::expr_err(const std::string& msg) {
     std::string res = "Json Expression Error: " + msg + '\n';
     res += buffer + '\n';

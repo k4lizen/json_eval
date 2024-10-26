@@ -1,6 +1,7 @@
 #pragma once
 
 #include "json.hpp"
+#include "parser.hpp"
 
 class JsonExprErr : public std::runtime_error {
 public:
@@ -25,7 +26,7 @@ enum class Operator {
 // Parses expressions which use JSONPath queries
 // https://www.rfc-editor.org/rfc/rfc9535
 // with slight differences
-class JsonExpressionParser {
+class JsonExpressionParser : private Parser {
 public:
     static JsonArray parse(const Json& json, const std::string& expression);
 
@@ -35,14 +36,6 @@ private:
     JsonArray parse_inner();
 
     // TODO: can i somehow deduplicate all this
-    char peek();
-    char peekNext();
-    char next();
-    bool match(const char c);
-    void assert_match(const char c);
-    void skip();
-    bool reached_end();
-
     [[noreturn]] void expr_err(const std::string& msg);
 
     JsonArray parse_func_or_path();
@@ -62,9 +55,6 @@ private:
     JsonArray evaluate_size(std::vector<Json>& arguments);
 
     JsonArray rootlist;
-    std::string buffer;
-    unsigned int current;
-    unsigned int line;
 };
 
 

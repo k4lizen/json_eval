@@ -1,6 +1,7 @@
 #pragma once
 
 #include "json.hpp"
+#include "parser.hpp"
 
 #include <stdexcept>
 #include <string>
@@ -12,7 +13,7 @@ public:
 
 // Used for deserializing JSON
 // returns object of type Json
-class JsonLoader {
+class JsonLoader : private Parser {
 public:
     static Json from_string(const std::string& str);
     static Json from_file(const std::string& file_name);
@@ -20,20 +21,10 @@ public:
 private:
     explicit JsonLoader(const std::string& data);
 
-    std::string buffer;
-    unsigned int line;    // line currently being parsed
-    unsigned int current; // index of character being parsed
-
     [[noreturn]] void load_err(const std::string& msg);
     std::string error_line();
     Json load(bool strict = true);
 
-    char peek();
-    char next();
-    bool match(const char c);
-    void assert_match(const char c);
-    void skip();
-    bool reached_end();
     Json load_object();
     Json load_array();
     KeyedJson load_pair();

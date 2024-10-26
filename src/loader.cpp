@@ -100,53 +100,6 @@ JsonLoader::JsonLoader(const std::string& data) {
     current = 0;
 }
 
-// Advance only if the next character matches param
-bool JsonLoader::match(const char c) {
-    if (peek() == c) {
-        next();
-        return true;
-    }
-    return false;
-}
-
-void JsonLoader::assert_match(const char c) {
-    assert(peek() == c);
-    next();
-}
-
-// Return current character
-char JsonLoader::peek() {
-    if (reached_end()) {
-        return '\0';
-    }
-
-    return buffer[current];
-}
-
-// Advance and return next character
-char JsonLoader::next() {
-    if (reached_end() || current + 1 >= buffer.size()) {
-        return '\0';
-    }
-
-    return buffer[++current];
-}
-
-bool JsonLoader::reached_end() {
-    return current >= buffer.size();
-}
-
-// Skip all whitespace
-void JsonLoader::skip() {
-    // bounds checking is happening in peek() and next()
-    char c = peek();
-    while (is_whitespace(c)) {
-        if (c == '\n') {
-            line++;
-        }
-        c = next();
-    }
-}
 
 // Consumes a hex character from the buffer and returns it
 unsigned int JsonLoader::unhexbyte() {
