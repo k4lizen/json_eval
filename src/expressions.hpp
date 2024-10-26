@@ -14,6 +14,14 @@ enum class FuncType {
     SIZE
 };
 
+enum class Operator {
+    NONE,
+    PLUS,
+    MINUS,
+    MUL,
+    DIV
+};
+
 // Parses expressions which use JSONPath queries
 // https://www.rfc-editor.org/rfc/rfc9535
 // with slight differences
@@ -41,7 +49,7 @@ private:
     JsonArray parse_func(const JsonArray& nodelist, FuncType func);
     JsonArray parse_path(const JsonArray& nodelist, std::string_view obj_beginning);
 
-    bool match_integer(int& number);
+    bool match_number(double& number);
     JsonArray parse_name(const JsonArray& nodelist, std::string_view name) const;
     JsonArray parse_name_selector_quoted(const JsonArray& nodelist, char quote);
     JsonArray parse_name_selector_dotted(const JsonArray& nodelist);

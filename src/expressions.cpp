@@ -126,27 +126,6 @@ FuncType string_to_functype(std::string_view sv) {
     }
 }
 
-// TODO: deduplicate??
-// If false is returned, number is undefined
-bool JsonExpressionParser::match_integer(int& number) {
-    const char* cbuff = buffer.c_str();
-    auto [ptr, ec] =
-        std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
-
-    if (ec == std::errc::invalid_argument) {
-        // no number at that location
-        return false;
-    }
-
-    if (ec == std::errc::result_out_of_range) {
-        expr_err("number out of range");
-    }
-
-    // valid number!
-    current = ptr - cbuff;
-    return true;
-}
-
 // For situations like [a.b[1]]
 // Number literals also count as expressions: [7]
 JsonArray JsonExpressionParser::parse_expr_selector(
@@ -199,24 +178,24 @@ JsonArray JsonExpressionParser::parse_expr_selector(
         expr_err("expression inside [...] evaluates to number (" + std::to_string(number) + "), but not an integer");
     }
 
+    // https://www.rfc-editor.org/rfc/rfc9535#name-semantics-5
     int idx = static_cast<int>(number);
-    // Following https://www.rfc-editor.org/rfc/rfc9535#name-semantics-5
-    // We need to accept negative numbers
-    if (idx < 0) {
-        idx = nodelist.size() - idx;
-    }
-
     JsonArray res;
     for (auto& node : nodelist) {
         // Nothing on non-arrays
         if (node.get_type() != JsonType::ARRAY) {
             continue;
         }
+        int cidx = idx;
+        // We need to accept negative numbers
+        if (cidx < 0) {
+            cidx = node.size() + cidx;
+        }
         // Nothing on out of bounds
-        if (idx < 0 || idx >= node.size()) {
+        if (cidx < 0 || cidx >= node.size()) {
             continue;
         }
-        res.push_back(node[idx]);
+        res.push_back(node[cidx]);
     }
     
     return res;
@@ -467,11 +446,159 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
                       std::string_view(buffer).substr(start, current - start));
 }
 
+// TODO: deduplicate??
+// If false is returned, number is undefined
+bool JsonExpressionParser::match_number(double& number) {
+    const char* cbuff = buffer.c_str();
+    auto [ptr, ec] =
+        std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
+
+    if (ec == std::errc::invalid_argument) {
+        // no number at that location
+        return false;
+    }
+
+    if (ec == std::errc::result_out_of_range) {
+        expr_err("number out of range");
+    }
+
+    // valid number!
+    current = ptr - cbuff;
+    return true;
+}
+
+bool is_binary_operator(char c) {
+    return c == '+' || c == '-' || c == '*' || c == '/';
+}
+
+// Returns error code:
+// 0 - no error
+// 1 - division by zero
+int apply_operator(double& result, double& operand, Operator operation) {
+    switch (operation) {
+    case Operator::NONE:
+        result = operand;
+        return 0;
+    case Operator::PLUS:
+        result += operand;
+        return 0;
+    case Operator::MINUS:
+        result -= operand;
+        return 0;
+    case Operator::MUL:
+        result *= operand;
+        return 0;
+    case Operator::DIV:
+        if (operand == 0) {
+            return 1;
+        }
+        result /= operand;
+        return 0;
+    }
+}
+
 // Can be a subexpression
 JsonArray JsonExpressionParser::parse_inner() {
-    // TODO: figure out binary operators here
-    skip();
-    return parse_func_or_path(rootlist);
+    // The constructs we encounter here go to either
+    // 1. match_number
+    // 2. + - / * processors
+    // 3. parse_func_or_path
+
+    // The + - / * operators can only operate on numbers,
+    // so we will keep an accumulative value for that case to save
+    // on overhead from putting / extracting numbers to JsonArray
+
+    // Whether the expression can end here
+    // (in terms of the binary operators)
+    bool expecting = true;
+    // Only valid if (expecting == true)
+    Operator last_op = Operator::NONE;
+    double num_total = 0;
+    // In case the expression doesn't use operators at all
+    JsonArray res;
+    bool first_is_non_numeric = false;
+
+    while(!reached_end()) {
+        skip();
+
+        // If a number is matched it couldn't have been a valid func/path/operator
+        // the - operator 
+        double number;
+        if (match_number(number)) {
+            if (!expecting) {
+                // x-y interpreted as x -y instead of x - y
+                if (number < 0) {
+                    num_total -= number;
+                    continue;
+                }
+                
+                expr_err("expecting end of expression or binary operator, got number");
+            }
+
+            if (apply_operator(num_total, number, last_op) == 1){
+                expr_err("division by zero");
+            }
+
+            expecting = false;
+            continue;
+        }
+
+        char c = peek();
+        // If an operator is matched it couldn't have been a valid func/path
+        if (is_binary_operator(c)) {
+            if (expecting) {
+                expr_err("expected value, got operator");
+            }
+
+            if (first_is_non_numeric) {
+                expr_err("expression to the left of binary operator doesn't resolve to [number]");
+            }
+
+            switch (c) {
+            case '+':
+                last_op = Operator::PLUS;
+                break;
+            case '-':
+                last_op = Operator::MINUS;
+                break;
+            case '*':
+                last_op = Operator::MUL;
+                break;
+            case '/':
+                last_op = Operator::DIV;
+                break;
+            }
+            expecting = true;
+            next();
+            continue;
+        }
+
+        if (!expecting) {
+            break;
+        }
+
+        JsonArray cur = parse_func_or_path(rootlist);
+        if (cur.size() == 1 && cur[0].get_type() == JsonType::NUMBER) {
+            if (apply_operator(num_total, number, last_op) == 1){
+                expr_err("division by zero");
+            }
+        } else {
+            if (last_op == Operator::NONE) {
+                res = std::move(cur);
+                first_is_non_numeric = true;
+            } else {
+                expr_err ("expression to the right of binary operator doesn't resolve to [number]");
+            }
+        }
+        expecting = false;
+    }
+
+    if (first_is_non_numeric) {
+        return res;
+    }
+
+    res.push_back(Json(num_total));
+    return res;
 }
 
 // The user supplied expression
