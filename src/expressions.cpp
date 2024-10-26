@@ -474,7 +474,7 @@ bool is_binary_operator(char c) {
 // Returns error code:
 // 0 - no error
 // 1 - division by zero
-int apply_operator(double& result, double& operand, Operator operation) {
+int apply_operator(double& result, double operand, Operator operation) {
     switch (operation) {
     case Operator::NONE:
         result = operand;
@@ -579,7 +579,7 @@ JsonArray JsonExpressionParser::parse_inner() {
 
         JsonArray cur = parse_func_or_path(rootlist);
         if (cur.size() == 1 && cur[0].get_type() == JsonType::NUMBER) {
-            if (apply_operator(num_total, number, last_op) == 1){
+            if (apply_operator(num_total, cur[0].get_number(), last_op) == 1){
                 expr_err("division by zero");
             }
         } else {
