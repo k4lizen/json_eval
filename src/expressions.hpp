@@ -45,9 +45,9 @@ private:
 
     [[noreturn]] void expr_err(const std::string& msg);
 
-    JsonArray parse_func_or_path(const JsonArray& nodelist);
-    JsonArray parse_func(const JsonArray& nodelist, FuncType func);
-    JsonArray parse_path(const JsonArray& nodelist, std::string_view obj_beginning);
+    JsonArray parse_func_or_path();
+    JsonArray parse_func(FuncType func);
+    JsonArray parse_path(std::string_view obj_beginning);
 
     bool match_number(double& number);
     JsonArray parse_name(const JsonArray& nodelist, std::string_view name) const;
@@ -56,9 +56,9 @@ private:
     JsonArray parse_expr_selector(const JsonArray& nodelist);
     JsonArray parse_selector(const JsonArray& nodelist);
 
-    JsonArray parse_max(const JsonArray& nodelist);
-    JsonArray parse_min(const JsonArray& nodelist);
-    JsonArray parse_size(const JsonArray& nodelist);
+    JsonArray parse_max();
+    JsonArray parse_min();
+    JsonArray parse_size();
 
     JsonArray rootlist;
     std::string buffer;

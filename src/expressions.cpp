@@ -89,26 +89,25 @@ void JsonExpressionParser::expr_err(const std::string& msg) {
     throw JsonExprErr(res);
 }
 
-JsonArray JsonExpressionParser::parse_max(const JsonArray& nodelist) {
+JsonArray JsonExpressionParser::parse_max() {
     exit(1);
 }
-JsonArray JsonExpressionParser::parse_min(const JsonArray& nodelist) {
+JsonArray JsonExpressionParser::parse_min() {
     exit(1);
 }
-JsonArray JsonExpressionParser::parse_size(const JsonArray& nodelist) {
+JsonArray JsonExpressionParser::parse_size() {
     exit(1);
 }
 
-JsonArray JsonExpressionParser::parse_func(const JsonArray& nodelist,
-                                           FuncType func) {
+JsonArray JsonExpressionParser::parse_func(FuncType func) {
     assert_match('(');
     switch (func) {
     case FuncType::MAX:
-        return parse_max(nodelist);
+        return parse_max();
     case FuncType::MIN:
-        return parse_min(nodelist);
+        return parse_min();
     case FuncType::SIZE:
-        return parse_size(nodelist);
+        return parse_size();
     default:
         assert(0); // TODO: this is ugly
     }
@@ -336,12 +335,11 @@ JsonArray JsonExpressionParser::parse_selector(const JsonArray& nodelist) {
     }
 }
 
-JsonArray JsonExpressionParser::parse_path(const JsonArray& nodelist,
-                                           std::string_view obj_beginning) {
+JsonArray JsonExpressionParser::parse_path(std::string_view obj_beginning) {
     char c = peek();
     assert(c == '.' || c == '[');
 
-    JsonArray res = nodelist;
+    JsonArray res = rootlist;
     if (obj_beginning != "") {
         // We need to parse this before we continue with this->current.
         // Doing it this way is an optimization circumventing the fact that
@@ -361,19 +359,22 @@ JsonArray JsonExpressionParser::parse_path(const JsonArray& nodelist,
     return res;
 }
 
-JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
+JsonArray JsonExpressionParser::parse_func_or_path() {
     char c;
     // $ means we are for sure in a path
     if (match('$')) {
         // jsonpath-query      = root-identifier segments
         // segments            = *(S segment)
         skip();
+        if (reached_end()) {
+            return rootlist;
+        }
         c = peek();
         if (c != '.' && c != '[') {
             expr_err("invalid character, expected . or [");
         }
 
-        return parse_path(nodelist, "");
+        return parse_path("");
     }
     // Posibilities:
     // [
@@ -396,7 +397,7 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
 
     c = peek();
     if (c == '[') {
-        return parse_path(nodelist, "");
+        return parse_path("");
     }
 
     int start = current;
@@ -418,18 +419,18 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
             if (func == FuncType::INVALID) {
                 expr_err("invalid function name '" + std::string(sv) + "'");
             }
-            return parse_func(nodelist, func);
+            return parse_func(func);
         }
         case '.':
         case '[':
             // something. or something[ path
-            return parse_path(nodelist, std::string_view(buffer).substr(
+            return parse_path(std::string_view(buffer).substr(
                                             start, current - start));
         case '+':
         case '-':
         case '*':
         case '/':
-            return parse_name(nodelist, std::string_view(buffer).substr(
+            return parse_name(rootlist, std::string_view(buffer).substr(
                                             start, current - start));
         default:
             if (!valid_dot_name_char(c)) {
@@ -442,7 +443,7 @@ JsonArray JsonExpressionParser::parse_func_or_path(const JsonArray& nodelist) {
     }
 
     // something<end of string>
-    return parse_name(nodelist,
+    return parse_name(rootlist,
                       std::string_view(buffer).substr(start, current - start));
 }
 
@@ -577,7 +578,7 @@ JsonArray JsonExpressionParser::parse_inner() {
             break;
         }
 
-        JsonArray cur = parse_func_or_path(rootlist);
+        JsonArray cur = parse_func_or_path();
         if (cur.size() == 1 && cur[0].get_type() == JsonType::NUMBER) {
             if (apply_operator(num_total, cur[0].get_number(), last_op) == 1){
                 expr_err("division by zero");
@@ -605,6 +606,11 @@ JsonArray JsonExpressionParser::parse_inner() {
 JsonArray JsonExpressionParser::parse() {
     current = 0;
     line = 1;
+
+    skip();
+    if (reached_end()) {
+        return rootlist;
+    }
 
     JsonArray res = parse_inner();
 
