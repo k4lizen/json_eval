@@ -127,8 +127,7 @@ FuncType string_to_functype(std::string_view sv) {
 
 // For situations like [a.b[1]]
 // Number literals also count as expressions: [7]
-JsonArray JsonExpressionParser::parse_expr_selector(
-    const JsonArray& nodelist) {
+JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     assert_match('[');
 
     // Weirdness due to the the spec extension coming from two facts:
@@ -169,12 +168,15 @@ JsonArray JsonExpressionParser::parse_expr_selector(
     }
 
     if (inside[0].get_type() != JsonType::NUMBER) {
-        expr_err("expression inside [...] must evaluate to [string] or [number], evaluates to: " + Json(inside).to_string());
+        expr_err("expression inside [...] must evaluate to [string] or "
+                 "[number], evaluates to: " +
+                 Json(inside).to_string());
     }
 
     double number = inside[0].get_number();
     if (std::floor(number) != number) {
-        expr_err("expression inside [...] evaluates to number (" + std::to_string(number) + "), but not an integer");
+        expr_err("expression inside [...] evaluates to number (" +
+                 std::to_string(number) + "), but not an integer");
     }
 
     // https://www.rfc-editor.org/rfc/rfc9535#name-semantics-5
@@ -196,7 +198,7 @@ JsonArray JsonExpressionParser::parse_expr_selector(
         }
         res.push_back(node[cidx]);
     }
-    
+
     return res;
 }
 
@@ -424,8 +426,8 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
         case '.':
         case '[':
             // something. or something[ path
-            return parse_path(std::string_view(buffer).substr(
-                                            start, current - start));
+            return parse_path(
+                std::string_view(buffer).substr(start, current - start));
         case '+':
         case '-':
         case '*':
@@ -519,11 +521,11 @@ JsonArray JsonExpressionParser::parse_inner() {
     JsonArray res;
     bool first_is_non_numeric = false;
 
-    while(!reached_end()) {
+    while (!reached_end()) {
         skip();
 
-        // If a number is matched it couldn't have been a valid func/path/operator
-        // the - operator 
+        // If a number is matched it couldn't have been a valid
+        // func/path/operator the - operator
         double number;
         if (match_number(number)) {
             if (!expecting) {
@@ -532,11 +534,12 @@ JsonArray JsonExpressionParser::parse_inner() {
                     num_total -= number;
                     continue;
                 }
-                
-                expr_err("expecting end of expression or binary operator, got number");
+
+                expr_err("expecting end of expression or binary operator, got "
+                         "number");
             }
 
-            if (apply_operator(num_total, number, last_op) == 1){
+            if (apply_operator(num_total, number, last_op) == 1) {
                 expr_err("division by zero");
             }
 
@@ -552,7 +555,8 @@ JsonArray JsonExpressionParser::parse_inner() {
             }
 
             if (first_is_non_numeric) {
-                expr_err("expression to the left of binary operator doesn't resolve to [number]");
+                expr_err("expression to the left of binary operator doesn't "
+                         "resolve to [number]");
             }
 
             switch (c) {
@@ -580,7 +584,7 @@ JsonArray JsonExpressionParser::parse_inner() {
 
         JsonArray cur = parse_func_or_path();
         if (cur.size() == 1 && cur[0].get_type() == JsonType::NUMBER) {
-            if (apply_operator(num_total, cur[0].get_number(), last_op) == 1){
+            if (apply_operator(num_total, cur[0].get_number(), last_op) == 1) {
                 expr_err("division by zero");
             }
         } else {
@@ -588,7 +592,8 @@ JsonArray JsonExpressionParser::parse_inner() {
                 res = std::move(cur);
                 first_is_non_numeric = true;
             } else {
-                expr_err ("expression to the right of binary operator doesn't resolve to [number]");
+                expr_err("expression to the right of binary operator doesn't "
+                         "resolve to [number]");
             }
         }
         expecting = false;
