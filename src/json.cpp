@@ -3,7 +3,9 @@
 #include "loader.hpp"
 #include "utils.hpp"
 #include <cassert>
+#include <cmath>
 #include <variant>
+#include <format>
 
 Json::Json() {
     _is_null = true;
@@ -199,9 +201,9 @@ std::string Json::to_string() const {
 }
 
 std::string Json::to_string(int indent) const {
-    // using 4-space indentation
-    std::string s_indent_less((indent - 1) * 4, ' ');
-    std::string s_indent = s_indent_less + "    ";
+    // using 2-space indentation
+    std::string s_indent_less((indent - 1) * 2, ' ');
+    std::string s_indent = s_indent_less + "  ";
     std::string res;
 
     switch (get_type()) {
@@ -233,8 +235,11 @@ std::string Json::to_string(int indent) const {
     }
     case JsonType::STRING:
         return '"' + escape_string(get_string()) + '"';
-    case JsonType::NUMBER:
-        return std::to_string(get_number());
+    case JsonType::NUMBER: {
+        // std::to_string doesn't work well on floating point
+        // https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2022/p2587r3.html
+        return std::format("{}", get_number());
+    }
     case JsonType::BOOL:
         return get_bool() ? "true" : "false";
     case JsonType::NULLVAL:
