@@ -4,6 +4,7 @@
 #include <cassert>
 #include <charconv>
 #include <cmath>
+#include <limits>
 
 JsonExpressionParser::JsonExpressionParser(const Json& json,
                                            const std::string& expression) {
@@ -89,28 +90,135 @@ void JsonExpressionParser::expr_err(const std::string& msg) {
     throw JsonExprErr(res);
 }
 
-JsonArray JsonExpressionParser::parse_max() {
-    exit(1);
+JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
+    double mx = std::numeric_limits<double>::lowest(); // min() is closest to zero.. wow.
+    int idx = 0;
+
+    JsonArray args;
+    if (arguments.size() == 1 && arguments[0].get_type() == JsonType::ARRAY) {
+        args = arguments[0].get_array();
+    } else {
+        args = arguments;
+    }
+
+    for (auto& arg : args) {
+        if (arg.get_type() != JsonType::NUMBER) {
+            expr_err("function max() only accepts numerical arguments but "
+                     "argument " +
+                     std::to_string(idx) + " is:\n" + arg.get_string());
+        }
+        mx = std::max(mx, arg.get_number());
+        idx += 1;
+    }
+
+    JsonArray res;
+    res.push_back(Json(mx));
+    return res;
 }
-JsonArray JsonExpressionParser::parse_min() {
-    exit(1);
+
+JsonArray JsonExpressionParser::evaluate_min(std::vector<Json>& arguments) {
+    double mn = std::numeric_limits<double>::max();
+    int idx = 0;
+    
+    JsonArray args;
+    if (arguments.size() == 1 && arguments[0].get_type() == JsonType::ARRAY) {
+        args = arguments[0].get_array();
+    } else {
+        args = arguments;
+    }
+    
+    for (auto& arg : args) {
+        if (arg.get_type() != JsonType::NUMBER) {
+            expr_err("function min() only accepts numerical arguments but "
+                     "argument " +
+                     std::to_string(idx) + " is:\n" + arg.to_string());
+        }
+        mn = std::min(mn, arg.get_number());
+        idx += 1;
+    }
+
+    JsonArray res;
+    res.push_back(Json(mn));
+    return res;
 }
-JsonArray JsonExpressionParser::parse_size() {
-    exit(1);
+
+JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
+    if (arguments.size() != 1) {
+        expr_err("function size() only accepts one argument");
+    }
+
+    Json arg = std::move(arguments[0]);
+    JsonArray res;
+
+    switch (arg.get_type()) {
+    case JsonType::ARRAY:
+    case JsonType::OBJECT:
+        res.push_back(Json(static_cast<double>(arg.size())));
+        break;
+    case JsonType::STRING:
+        res.push_back(Json(static_cast<double>(arg.get_string().size())));
+        break;
+    default:
+        expr_err("function size() is only valid for Json arrays, objects and "
+                 "strings");
+    }
+
+    return res;
+}
+
+// arguments is assumed to have at least one element
+// the function may modify arguments
+JsonArray
+JsonExpressionParser::evaluate_function(FuncType func,
+                                        std::vector<Json>& arguments) {
+    switch (func) {
+    case FuncType::MAX:
+        return evaluate_max(arguments);
+    case FuncType::MIN:
+        return evaluate_min(arguments);
+    case FuncType::SIZE:
+        return evaluate_size(arguments);
+    default:
+        assert(0); // TODO: this is ugly
+    }
 }
 
 JsonArray JsonExpressionParser::parse_func(FuncType func) {
     assert_match('(');
-    switch (func) {
-    case FuncType::MAX:
-        return parse_max();
-    case FuncType::MIN:
-        return parse_min();
-    case FuncType::SIZE:
-        return parse_size();
-    default:
-        assert(0); // TODO: this is ugly
+
+    std::vector<Json> arguments;
+    // Are we expecting another expression (in terms of , )
+    bool expecting = true;
+
+    while (!reached_end()) {
+        skip();
+
+        if (expecting) {
+            JsonArray cur = parse_inner();
+            if (cur.empty()) {
+                expr_err("function argument cannot evaluate to nothing");
+            }
+            // TODO: differentiate syntactic errors and evaluation errors?
+            if (cur.size() != 1) {
+                expr_err("function argument must evaluate to one Json");
+            }
+            arguments.push_back(std::move(cur[0]));
+            expecting = false;
+            continue;
+        }
+
+        if (match(',')) {
+            expecting = true;
+        } else {
+            break;
+        }
     }
+
+    if (!match(')')) {
+        expr_err("function call unterminated, expected )");
+    }
+
+    return evaluate_function(func, arguments);
 }
 
 FuncType string_to_functype(std::string_view sv) {
@@ -158,8 +266,9 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     // The expression needs to evaluate to a one-element array
     // containing either an integer or a string
     if (inside.size() != 1) {
+        current -= 1;
         expr_err("expression inside [...] must evaluate to one value, "
-                 "evaluates to: " +
+                 "evaluates to:\n" +
                  Json(inside).to_string());
     }
 
@@ -168,13 +277,15 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     }
 
     if (inside[0].get_type() != JsonType::NUMBER) {
+        current -= 1;
         expr_err("expression inside [...] must evaluate to [string] or "
-                 "[number], evaluates to: " +
+                 "[number], evaluates to:\n" +
                  Json(inside).to_string());
     }
 
     double number = inside[0].get_number();
     if (std::floor(number) != number) {
+        current -= 1;
         expr_err("expression inside [...] evaluates to number (" +
                  std::to_string(number) + "), but not an integer");
     }
@@ -361,6 +472,10 @@ JsonArray JsonExpressionParser::parse_path(std::string_view obj_beginning) {
     return res;
 }
 
+bool is_binary_operator(char c) {
+    return c == '+' || c == '-' || c == '*' || c == '/';
+}
+
 JsonArray JsonExpressionParser::parse_func_or_path() {
     char c;
     // $ means we are for sure in a path
@@ -368,6 +483,7 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
         // jsonpath-query      = root-identifier segments
         // segments            = *(S segment)
         skip();
+        // no way to do size($) currently
         if (reached_end()) {
             return rootlist;
         }
@@ -428,13 +544,12 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
             // something. or something[ path
             return parse_path(
                 std::string_view(buffer).substr(start, current - start));
-        case '+':
-        case '-':
-        case '*':
-        case '/':
-            return parse_name(rootlist, std::string_view(buffer).substr(
-                                            start, current - start));
         default:
+            if (is_binary_operator(c) || c == ']' || c == ')') {
+                return parse_name(rootlist, std::string_view(buffer).substr(
+                                                start, current - start));
+            }
+
             if (!valid_dot_name_char(c)) {
                 expr_err("invalid character in dot-notation name selector or "
                          "function name");
@@ -470,10 +585,6 @@ bool JsonExpressionParser::match_number(double& number) {
     return true;
 }
 
-bool is_binary_operator(char c) {
-    return c == '+' || c == '-' || c == '*' || c == '/';
-}
-
 // Returns error code:
 // 0 - no error
 // 1 - division by zero
@@ -504,7 +615,7 @@ int apply_operator(double& result, double operand, Operator operation) {
 JsonArray JsonExpressionParser::parse_inner() {
     // The constructs we encounter here go to either
     // 1. match_number
-    // 2. + - / * processors
+    // 2. + - / * apply_operator
     // 3. parse_func_or_path
 
     // The + - / * operators can only operate on numbers,

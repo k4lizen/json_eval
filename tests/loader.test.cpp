@@ -6,6 +6,8 @@
 
 std::string data_loc = "tests/data/";
 
+// TODO: make a matching function so tests aren't so fickle
+
 TEST_CASE("correctly desirializes", "[loader]") {
     std::string data = R"({
     "mama mia": {

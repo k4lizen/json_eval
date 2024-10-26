@@ -103,6 +103,20 @@ std::string Json::get_string() const {
     throw JsonTypeErr("get_string() called on Json which isnt JsonType::STRING");
 }
 
+JsonArray Json::get_array() const {
+    if (std::holds_alternative<JsonArray>(val)) {
+        return std::get<JsonArray>(val);
+    }
+    throw JsonTypeErr("get_array() called on Json which isnt JsonType::ARRAY");
+}
+
+JsonMap Json::get_obj() const {
+    if (std::holds_alternative<JsonMap>(val)) {
+        return std::get<JsonMap>(val);
+    }
+    throw JsonTypeErr("get_obj() called on Json which isnt JsonType::OBJECT");
+}
+
 // valid only for JsonType::ARRAY
 Json Json::operator[](const int idx) const {
     if (std::holds_alternative<JsonArray>(val)) {

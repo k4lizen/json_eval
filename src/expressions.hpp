@@ -56,9 +56,10 @@ private:
     JsonArray parse_expr_selector(const JsonArray& nodelist);
     JsonArray parse_selector(const JsonArray& nodelist);
 
-    JsonArray parse_max();
-    JsonArray parse_min();
-    JsonArray parse_size();
+    JsonArray evaluate_function(FuncType func, std::vector<Json>& arguments);
+    JsonArray evaluate_max(std::vector<Json>& arguments);
+    JsonArray evaluate_min(std::vector<Json>& arguments);
+    JsonArray evaluate_size(std::vector<Json>& arguments);
 
     JsonArray rootlist;
     std::string buffer;
