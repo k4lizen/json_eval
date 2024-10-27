@@ -16,7 +16,6 @@ public:
 };
 
 enum class FuncType {
-    INVALID,
     MIN,
     MAX,
     SIZE
@@ -55,6 +54,7 @@ private:
     JsonArray parse_expr_selector(const JsonArray& nodelist);
     JsonArray parse_selector(const JsonArray& nodelist);
 
+    FuncType string_to_functype(std::string_view sv);
     JsonArray evaluate_function(FuncType func, std::vector<Json>& arguments);
     JsonArray evaluate_max(std::vector<Json>& arguments);
     JsonArray evaluate_min(std::vector<Json>& arguments);

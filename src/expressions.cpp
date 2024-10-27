@@ -127,9 +127,8 @@ JsonExpressionParser::evaluate_function(FuncType func,
         return evaluate_min(arguments);
     case FuncType::SIZE:
         return evaluate_size(arguments);
-    default:
-        assert(0); // TODO: this is ugly
     }
+    assert(0);
 }
 
 JsonArray JsonExpressionParser::parse_func(FuncType func) {
@@ -169,7 +168,7 @@ JsonArray JsonExpressionParser::parse_func(FuncType func) {
     return evaluate_function(func, arguments);
 }
 
-FuncType string_to_functype(std::string_view sv) {
+FuncType JsonExpressionParser::string_to_functype(std::string_view sv) {
     if (sv == "min") {
         return FuncType::MIN;
     } else if (sv == "max") {
@@ -177,7 +176,8 @@ FuncType string_to_functype(std::string_view sv) {
     } else if (sv == "size") {
         return FuncType::SIZE;
     } else {
-        return FuncType::INVALID;
+        syntax_err("invalid function name '" + std::string(sv) + "'");
+        __builtin_unreachable();
     }
 }
 
@@ -482,9 +482,6 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
             std::string_view sv =
                 std::string_view(buffer).substr(start, current - start);
             FuncType func = string_to_functype(sv);
-            if (func == FuncType::INVALID) {
-                syntax_err("invalid function name '" + std::string(sv) + "'");
-            }
             return parse_func(func);
         }
         case '.':
@@ -535,9 +532,8 @@ int apply_operator(double& result, double operand, Operator operation) {
         }
         result /= operand;
         return 0;
-    default:
-        assert(0); // TODO: ugly
     }
+    assert(0);
 }
 
 // Can be a subexpression
