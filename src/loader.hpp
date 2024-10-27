@@ -21,7 +21,7 @@ public:
 private:
     explicit JsonLoader(const std::string& data);
 
-    [[noreturn]] void load_err(const std::string& msg);
+    [[noreturn]] void syntax_err(const std::string& msg) override;
     std::string error_line();
     Json load(bool strict = true);
 
@@ -38,5 +38,4 @@ private:
     bool match_true();
     bool match_false();
     bool match_null();
-    bool match_number(double& number);
 };

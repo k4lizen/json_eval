@@ -2,7 +2,6 @@
 #include "json.hpp"
 #include "utils.hpp"
 #include <cassert>
-#include <charconv>
 #include <cmath>
 #include <limits>
 
@@ -22,7 +21,7 @@ JsonArray JsonExpressionParser::parse(const Json& json,
     return jep.parse();
 }
 
-void JsonExpressionParser::expr_err(const std::string& msg) {
+[[noreturn]] void JsonExpressionParser::syntax_err(const std::string& msg) {
     std::string res = "Json Expression Error: " + msg + '\n';
     res += "position: " + std::to_string(current) + '\n';
     res += buffer + '\n';
@@ -43,7 +42,7 @@ JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
 
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
-            expr_err("function max() only accepts numerical arguments but "
+            syntax_err("function max() only accepts numerical arguments but "
                      "argument " +
                      std::to_string(idx) + " is:\n" + arg.get_string());
         }
@@ -69,7 +68,7 @@ JsonArray JsonExpressionParser::evaluate_min(std::vector<Json>& arguments) {
     
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
-            expr_err("function min() only accepts numerical arguments but "
+            syntax_err("function min() only accepts numerical arguments but "
                      "argument " +
                      std::to_string(idx) + " is:\n" + arg.to_string());
         }
@@ -84,7 +83,7 @@ JsonArray JsonExpressionParser::evaluate_min(std::vector<Json>& arguments) {
 
 JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
     if (arguments.size() != 1) {
-        expr_err("function size() only accepts one argument");
+        syntax_err("function size() only accepts one argument");
     }
 
     Json arg = std::move(arguments[0]);
@@ -99,7 +98,7 @@ JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
         res.push_back(Json(static_cast<double>(arg.get_string().size())));
         break;
     default:
-        expr_err("function size() is only valid for Json arrays, objects and "
+        syntax_err("function size() is only valid for Json arrays, objects and "
                  "strings");
     }
 
@@ -136,11 +135,11 @@ JsonArray JsonExpressionParser::parse_func(FuncType func) {
         if (expecting) {
             JsonArray cur = parse_inner();
             if (cur.empty()) {
-                expr_err("function argument cannot evaluate to nothing");
+                syntax_err("function argument cannot evaluate to nothing");
             }
             // TODO: differentiate syntactic errors and evaluation errors?
             if (cur.size() != 1) {
-                expr_err("function argument must evaluate to one Json");
+                syntax_err("function argument must evaluate to one Json");
             }
             arguments.push_back(std::move(cur[0]));
             expecting = false;
@@ -155,7 +154,7 @@ JsonArray JsonExpressionParser::parse_func(FuncType func) {
     }
 
     if (!match(')')) {
-        expr_err("function call unterminated, expected )");
+        syntax_err("function call unterminated, expected )");
     }
 
     return evaluate_function(func, arguments);
@@ -200,14 +199,14 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
 
     skip();
     if (!match(']')) {
-        expr_err("expected ]");
+        syntax_err("expected ]");
     }
 
     // The expression needs to evaluate to a one-element array
     // containing either an integer or a string
     if (inside.size() != 1) {
         current -= 1;
-        expr_err("expression inside [...] must evaluate to one value, "
+        syntax_err("expression inside [...] must evaluate to one value, "
                  "evaluates to:\n" +
                  Json(inside).to_string());
     }
@@ -218,7 +217,7 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
 
     if (inside[0].get_type() != JsonType::NUMBER) {
         current -= 1;
-        expr_err("expression inside [...] must evaluate to [string] or "
+        syntax_err("expression inside [...] must evaluate to [string] or "
                  "[number], evaluates to:\n" +
                  Json(inside).to_string());
     }
@@ -226,7 +225,7 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     double number = inside[0].get_number();
     if (std::floor(number) != number) {
         current -= 1;
-        expr_err("expression inside [...] evaluates to number (" +
+        syntax_err("expression inside [...] evaluates to number (" +
                  std::to_string(number) + "), but not an integer");
     }
 
@@ -312,7 +311,7 @@ JsonExpressionParser::parse_name_selector_dotted(const JsonArray& nodelist) {
     int start = current;
     char c = peek();
     if (!valid_dot_name_first(c)) {
-        expr_err("invalid first character for dot-notation name selector");
+        syntax_err("invalid first character for dot-notation name selector");
     }
 
     while (valid_dot_name_char(c)) {
@@ -337,14 +336,14 @@ JsonExpressionParser::parse_name_selector_quoted(const JsonArray& nodelist,
 
     // either the quote or the ] isn't closed
     if (reached_end()) {
-        expr_err("query ended early: unterminated name selector");
+        syntax_err("query ended early: unterminated name selector");
     }
 
     std::string_view name =
         std::string_view(buffer).substr(start, current - start);
     assert_match(quote);
     if (!match(']')) {
-        expr_err("unterminated name selector, expected ]");
+        syntax_err("unterminated name selector, expected ]");
     }
     return parse_name(nodelist, name);
 }
@@ -429,7 +428,7 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
         }
         c = peek();
         if (c != '.' && c != '[') {
-            expr_err("invalid character, expected . or [");
+            syntax_err("invalid character, expected . or [");
         }
 
         return parse_path("");
@@ -462,7 +461,7 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
     // allowed function name characters are a subset of allowed dot name
     // characters
     if (!valid_dot_name_first(c)) {
-        expr_err("invalid first character in dot-notation name selector or "
+        syntax_err("invalid first character in dot-notation name selector or "
                  "function name");
     }
     c = next();
@@ -475,7 +474,7 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
                 std::string_view(buffer).substr(start, current - start);
             FuncType func = string_to_functype(sv);
             if (func == FuncType::INVALID) {
-                expr_err("invalid function name '" + std::string(sv) + "'");
+                syntax_err("invalid function name '" + std::string(sv) + "'");
             }
             return parse_func(func);
         }
@@ -491,7 +490,7 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
             }
 
             if (!valid_dot_name_char(c)) {
-                expr_err("invalid character in dot-notation name selector or "
+                syntax_err("invalid character in dot-notation name selector or "
                          "function name");
             }
         }
@@ -502,27 +501,6 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
     // something<end of string>
     return parse_name(rootlist,
                       std::string_view(buffer).substr(start, current - start));
-}
-
-// TODO: deduplicate??
-// If false is returned, number is undefined
-bool JsonExpressionParser::match_number(double& number) {
-    const char* cbuff = buffer.c_str();
-    auto [ptr, ec] =
-        std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
-
-    if (ec == std::errc::invalid_argument) {
-        // no number at that location
-        return false;
-    }
-
-    if (ec == std::errc::result_out_of_range) {
-        expr_err("number out of range");
-    }
-
-    // valid number!
-    current = ptr - cbuff;
-    return true;
 }
 
 // Returns error code:
@@ -588,12 +566,12 @@ JsonArray JsonExpressionParser::parse_inner() {
                     continue;
                 }
 
-                expr_err("expecting end of expression or binary operator, got "
+                syntax_err("expecting end of expression or binary operator, got "
                          "number");
             }
 
             if (apply_operator(num_total, number, last_op) == 1) {
-                expr_err("division by zero");
+                syntax_err("division by zero");
             }
 
             expecting = false;
@@ -604,11 +582,11 @@ JsonArray JsonExpressionParser::parse_inner() {
         // If an operator is matched it couldn't have been a valid func/path
         if (is_binary_operator(c)) {
             if (expecting) {
-                expr_err("expected value, got operator");
+                syntax_err("expected value, got operator");
             }
 
             if (first_is_non_numeric) {
-                expr_err("expression to the left of binary operator doesn't "
+                syntax_err("expression to the left of binary operator doesn't "
                          "resolve to [number]");
             }
 
@@ -638,14 +616,14 @@ JsonArray JsonExpressionParser::parse_inner() {
         JsonArray cur = parse_func_or_path();
         if (cur.size() == 1 && cur[0].get_type() == JsonType::NUMBER) {
             if (apply_operator(num_total, cur[0].get_number(), last_op) == 1) {
-                expr_err("division by zero");
+                syntax_err("division by zero");
             }
         } else {
             if (last_op == Operator::NONE) {
                 res = std::move(cur);
                 first_is_non_numeric = true;
             } else {
-                expr_err("expression to the right of binary operator doesn't "
+                syntax_err("expression to the right of binary operator doesn't "
                          "resolve to [number]");
             }
         }
@@ -674,7 +652,7 @@ JsonArray JsonExpressionParser::parse() {
 
     skip();
     if (!reached_end()) {
-        expr_err("expected end of expression");
+        syntax_err("expected end of expression");
     }
 
     return res;

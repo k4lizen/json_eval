@@ -1,5 +1,4 @@
 #include <cassert>
-#include <charconv>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -57,7 +56,7 @@ std::string JsonLoader::error_line() {
     return desc;
 }
 
-[[noreturn]] void JsonLoader::load_err(const std::string& msg) {
+[[noreturn]] void JsonLoader::syntax_err(const std::string& msg) {
     std::string err_msg = "Load Error: " + msg + '\n';
     err_msg += error_line();
 
@@ -114,14 +113,14 @@ unsigned int JsonLoader::unhexbyte() {
         return static_cast<unsigned int>(c - 'A' + 10);
     } else {
         current -= 1;
-        load_err("invalid hex character in \\uXXXX escape sequence");
+        syntax_err("invalid hex character in \\uXXXX escape sequence");
     }
 }
 
 // Returns a two-byte value determined by a \uXXXX escape
 unsigned int JsonLoader::parse_codepoint() {
     if (current + 3 >= buffer.size()) {
-        load_err("the \\uXXXX escape needs four characters");
+        syntax_err("the \\uXXXX escape needs four characters");
     }
 
     unsigned int codepoint = unhexbyte();
@@ -152,20 +151,20 @@ std::string JsonLoader::parse_unicode() {
 
     // surrogate pair, low part
     if (0xDC00 <= codepoint && codepoint <= 0xDFFF) {
-        load_err("codepoint is for the low part of a utf-16 surrogate pair, "
+        syntax_err("codepoint is for the low part of a utf-16 surrogate pair, "
                  "but there is no preceding high part");
     }
 
     // surrogate pair, high part
     if (0xD800 <= codepoint && codepoint <= 0xDBFF) {
         if (current + 5 >= buffer.size() || !match('\\') || !match('u')) {
-            load_err("expected second (low) part of utf-16 surrogate pair");
+            syntax_err("expected second (low) part of utf-16 surrogate pair");
         }
 
         unsigned int low_part = parse_codepoint();
         if (!(0xDC00 <= low_part && low_part <= 0xDFFF)) {
             current -= 4;
-            load_err("codepoint isn't valid low part of utf-16 surrogate pair");
+            syntax_err("codepoint isn't valid low part of utf-16 surrogate pair");
         }
 
         codepoint =
@@ -232,7 +231,7 @@ std::string JsonLoader::parse_escaped() {
     case 'u':
         return parse_unicode();
     default:
-        load_err("invalid escape sequence");
+        syntax_err("invalid escape sequence");
     }
 }
 
@@ -254,7 +253,7 @@ std::string JsonLoader::load_string() {
             break;
         default:
             if (static_cast<unsigned int>(c) < 0x20) {
-                load_err("strings cannot include unescaped control characters");
+                syntax_err("strings cannot include unescaped control characters");
             }
 
             sstream << c;
@@ -262,7 +261,7 @@ std::string JsonLoader::load_string() {
         }
     }
 
-    load_err("unterminated string");
+    syntax_err("unterminated string");
 }
 
 bool JsonLoader::match_false() {
@@ -310,56 +309,6 @@ bool JsonLoader::match_null() {
     return false;
 }
 
-// If false is returned, number is undefined
-bool JsonLoader::match_number(double& number) {
-    // We are strictly conforming to:
-    // https://www.rfc-editor.org/rfc/rfc8259#section-6
-
-    // > Since software that implements
-    // > IEEE 754 binary64 (double precision) numbers [IEEE754] is generally
-    // > available and widely used, good interoperability can be achieved by
-    // > implementations that expect no more precision or range than these
-    // > provide, [...]
-    //
-    // So we will use a double (64 bits) for the number type
-
-    // We can't use strtod and friends for the conversion because they
-    // don't conform to the json definition of a number, but from_chars
-    // *mostly* does. Also, see Notes section in
-    // https://en.cppreference.com/w/cpp/utility/from_chars
-
-    const char* cbuff = buffer.c_str();
-    // We give it the whole rest of the buffer, it will only care about the
-    // initial valid part
-    auto [ptr, ec] =
-        std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
-    if (ec == std::errc::invalid_argument) {
-        // no number at that location
-        return false;
-    }
-    if (ec == std::errc::result_out_of_range) {
-        load_err("number out of range");
-    }
-
-    // Checks that from_chars doesn't perform
-    std::string_view numstr = std::string_view(buffer).substr(current, ptr - (current + cbuff));
-    // leading zeroes aren't allowed
-    if (numstr[0] == '0' && numstr != "0") {
-        load_err("number cannot have leading zeroes");
-    }
-    if (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '0' && numstr != "-0") {
-        load_err("(negative) number cannot have leading zeroes");
-    }
-    // omitting the integer part in a fraction (.123 like 0.123) isn't allowed
-    if (numstr[0] == '.' || (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '.')) {
-        load_err("fractional number must have integer component");
-    }
-
-    // valid number!
-    current = ptr - cbuff;
-    return true;
-}
-
 Json JsonLoader::load_value() {
     skip();
 
@@ -385,7 +334,7 @@ Json JsonLoader::load_value() {
             return Json(number);
         }
 
-        load_err("unexpected symbol for value");
+        syntax_err("unexpected symbol for value");
     }
 }
 
@@ -396,7 +345,7 @@ KeyedJson JsonLoader::load_pair() {
     skip();
 
     if (!match(':')) {
-        load_err("key string must be followed by a semicolon");
+        syntax_err("key string must be followed by a semicolon");
     }
 
     return KeyedJson(key, load_value());
@@ -425,7 +374,7 @@ Json JsonLoader::load_object() {
                 pending = false;
                 continue;
             } else {
-                load_err("unexpected symbol, wanted key-value pair");
+                syntax_err("unexpected symbol, wanted key-value pair");
             }
         }
 
@@ -439,11 +388,11 @@ Json JsonLoader::load_object() {
             next();
             return node;
         default:
-            load_err("unexpected symbol, wanted , or }");
+            syntax_err("unexpected symbol, wanted , or }");
         }
     }
 
-    load_err("reached EOF without closing curly brace");
+    syntax_err("reached EOF without closing curly brace");
 }
 
 Json JsonLoader::load_array() {
@@ -479,11 +428,11 @@ Json JsonLoader::load_array() {
             next();
             break;
         default:
-            load_err("unexpected symbol, wanted , or ]");
+            syntax_err("unexpected symbol, wanted , or ]");
         }
     }
 
-    load_err("reached EOF without closing square brace");
+    syntax_err("reached EOF without closing square brace");
 }
 
 // Initiates the parsing logic of JsonLoader
@@ -503,7 +452,7 @@ Json JsonLoader::load(bool strict) {
         case '[':
             return load_array();
         default:
-            load_err("json must be object or array");
+            syntax_err("json must be object or array");
         }
     } else {
         return load_value();

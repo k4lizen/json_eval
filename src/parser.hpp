@@ -12,6 +12,9 @@ protected:
     void assert_match(const char c);
     void skip();
     bool reached_end();
+    bool match_number(double& number);
+
+    virtual void syntax_err(const std::string& msg) = 0;
 
     std::string buffer;
     unsigned int current; // index of character being parsed

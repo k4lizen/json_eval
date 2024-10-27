@@ -35,13 +35,12 @@ private:
     JsonArray parse();
     JsonArray parse_inner();
 
-    [[noreturn]] void expr_err(const std::string& msg);
+    [[noreturn]] void syntax_err(const std::string& msg) override;
 
     JsonArray parse_func_or_path();
     JsonArray parse_func(FuncType func);
     JsonArray parse_path(std::string_view obj_beginning);
 
-    bool match_number(double& number);
     JsonArray parse_name(const JsonArray& nodelist, std::string_view name) const;
     JsonArray parse_name_selector_quoted(const JsonArray& nodelist, char quote);
     JsonArray parse_name_selector_dotted(const JsonArray& nodelist);
