@@ -1,12 +1,10 @@
+#include "err_matcher.hpp"
 #include "json.hpp"
-#define CATCH_CONFIG_MAIN
 
-#include "loader.hpp"
 #include "catch_amalgamated.hpp"
+#include "loader.hpp"
 
 std::string data_loc = "tests/data/";
-
-// TODO: make a matching function so tests aren't so fickle
 
 TEST_CASE("correctly desirializes", "[loader]") {
     std::string data = R"({
@@ -38,10 +36,10 @@ TEST_CASE("correctly desirializes", "[loader]") {
 
     REQUIRE_NOTHROW([data] {
         Json j;
-        SECTION ("string") {
+        SECTION("string") {
             j = JsonLoader::from_string(data);
         }
-        SECTION ("file") {
+        SECTION("file") {
             j = JsonLoader::from_file(data_loc + "ok.json");
         }
 
@@ -65,16 +63,22 @@ Abbꪪ𐔁nya)");
         REQUIRE(arr[1].get_string() == "bnewline\n\fcc\rc\b\n\na\"quotes\"");
         // testing newline literally and escape codes as hex
         REQUIRE(arr[1].get_string() == std::string(R"(bnewline
-)") + "\xc" "cc\xd" "c\x8" + R"(
+)") +
+                                           "\xc"
+                                           "cc\xd"
+                                           "c\x8" +
+                                           R"(
 
 a"quotes")");
         REQUIRE((arr[2].size() == 0 && arr[2].get_type() == JsonType::ARRAY));
         REQUIRE(arr[3].is_null() == true);
         REQUIRE(arr[4].get_bool() == true);
         REQUIRE(arr[5].get_number() == 3.13);
-        REQUIRE((arr[6].size() == 1 && arr[6]["a"].size() == 0 && arr[6]["a"].get_type() == JsonType::OBJECT));
+        REQUIRE((arr[6].size() == 1 && arr[6]["a"].size() == 0 &&
+                 arr[6]["a"].get_type() == JsonType::OBJECT));
         REQUIRE((arr[7].size() == 2 && arr[7][0].get_string() == "a"));
-        REQUIRE((arr[7][1].size() == 1 && arr[7][1]["b"][0].get_string() == "c"));
+        REQUIRE(
+            (arr[7][1].size() == 1 && arr[7][1]["b"][0].get_string() == "c"));
     }());
 }
 
@@ -101,72 +105,48 @@ TEST_CASE("file empty", "[loader][file]") {
 }
 
 TEST_CASE("only allow strict (either object or array)", "[loader]") {
+    const std::string must_be = "json must be object or array";
 
     SECTION("doesnt allow true") {
         std::string data = "true";
-        std::string expected = R"(Load Error: json must be object or array
-line: 1 position: 0
-1:true
-  ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr, EqualsJError(1, 0, must_be));
     }
 
     SECTION("doesnt allow false") {
         std::string data = "false";
-        std::string expected = R"(Load Error: json must be object or array
-line: 1 position: 0
-1:false
-  ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr, EqualsJError(1, 0, must_be));
     }
     SECTION("doesnt allow nil") {
         std::string data = "nil";
-        std::string expected = R"(Load Error: json must be object or array
-line: 1 position: 0
-1:nil
-  ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr, EqualsJError(1, 0, must_be));
     }
     SECTION("doesnt allow strings") {
         std::string data = "\"a\"";
-        std::string expected = R"(Load Error: json must be object or array
-line: 1 position: 0
-1:"a"
-  ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr, EqualsJError(1, 0, must_be));
     }
     SECTION("doesnt allow numbers") {
         std::string data = "1337";
-        std::string expected = R"(Load Error: json must be object or array
-line: 1 position: 0
-1:1337
-  ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr, EqualsJError(1, 0, must_be));
     }
 
     SECTION("allows objects") {
@@ -193,18 +173,11 @@ TEST_CASE("no value", "[loader]") {
     },
 })";
 
-    std::string expected = R"(Load Error: unexpected symbol for value
-line: 5 position: 64
-...
-4:            "awa":
-5:        },
-          ^~~~~~~~~~~
-)";
     REQUIRE_THROWS_MATCHES(
         [data] {
             JsonLoader::from_string(data);
         }(),
-        JsonLoadErr, Catch::Matchers::Message(expected));
+        JsonLoadErr, EqualsJError(5, 64, "unexpected symbol for value"));
 }
 
 TEST_CASE("no key", "[loader]") {
@@ -215,105 +188,82 @@ TEST_CASE("no key", "[loader]") {
         },
     },
 })";
-    std::string expected =
-        R"(Load Error: unexpected symbol, wanted key-value pair
-line: 4 position: 49
-...
-3:        "nya": {
-4:            :"bab"
-              ^~~~~~~~~~~
-)";
     REQUIRE_THROWS_MATCHES(
         [data] {
             JsonLoader::from_string(data);
         }(),
-        JsonLoadErr, Catch::Matchers::Message(expected));
+        JsonLoadErr,
+        EqualsJError(4, 49, "unexpected symbol, wanted key-value pair"));
 }
 
 TEST_CASE("bad unicode", "[loader]") {
     SECTION("empty \\u") {
         std::string data = R"(["\u"])";
-        std::string expected =
-            R"(Load Error: the \uXXXX escape needs four characters
-line: 1 position: 4
-1:["\u"]
-      ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr,
+            EqualsJError(1, 4, R"(the \uXXXX escape needs four characters)"));
     }
     SECTION("not enough \\uXXX") {
         std::string data = R"(["\u0BA","a"])";
-        std::string expected =
-            R"(Load Error: invalid hex character in \uXXXX escape sequence
-line: 1 position: 7
-1:["\u0BA","a"]
-         ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr,
+            EqualsJError(1, 7,
+                         R"(invalid hex character in \uXXXX escape sequence)"));
     }
     SECTION("invalid hex character") {
         std::string data = R"(["\u1CGB"])";
-        std::string expected =
-            R"(Load Error: invalid hex character in \uXXXX escape sequence
-line: 1 position: 6
-1:["\u1CGB"]
-        ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr,
+            EqualsJError(1, 6,
+                         R"(invalid hex character in \uXXXX escape sequence)"));
     }
     SECTION("unmatched low part of surrogate") {
         std::string data = R"(["\u0041\uDCBB"])";
-        REQUIRE_THROWS_AS(
+        REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr);
+            JsonLoadErr,
+            EqualsJError(1, 14,
+                         "codepoint is for the low part of a utf-16 surrogate "
+                         "pair, but there is no preceding high part"));
     }
     SECTION("high part missing") {
         std::string data = R"(["\u0041\uD8ABcute"])";
-        std::string expected =
-            R"(Load Error: expected second (low) part of utf-16 surrogate pair
-line: 1 position: 14
-1:["\u0041\uD8ABcute"]
-                ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr,
+            EqualsJError(
+                1, 14, "expected second (low) part of utf-16 surrogate pair"));
     }
     SECTION("high part invalid") {
         std::string data = R"(["\u0041\uD8AB\uAAAA"])";
-        std::string expected =
-            R"(Load Error: codepoint isn't valid low part of utf-16 surrogate pair
-line: 1 position: 16
-1:["\u0041\uD8AB\uAAAA"]
-                  ^~~~~~~~~~~
-)";
         REQUIRE_THROWS_MATCHES(
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, Catch::Matchers::Message(expected));
+            JsonLoadErr,
+            EqualsJError(
+                1, 16,
+                "codepoint isn't valid low part of utf-16 surrogate pair"));
     }
 }
 
 TEST_CASE("good unicode", "[loader]") {
     REQUIRE_NOTHROW([] {
-        std::string data = R"(["A\u0042A", "𑚉𞠩𠁆💜š", "\uD805\uDe89\uD83A\uDC29\ud840\uDC46\uD83D\udc9C\u0161", "⦚\u299a\u299A"])";
+        std::string data =
+            R"(["A\u0042A", "𑚉𞠩𠁆💜š", "\uD805\uDe89\uD83A\uDC29\ud840\uDC46\uD83D\udc9C\u0161", "⦚\u299a\u299A"])";
         Json j = JsonLoader::from_string(data);
         REQUIRE(j[0].get_string() == "ABA");
         REQUIRE(j[1].get_string() == "𑚉𞠩𠁆💜š");
@@ -322,14 +272,8 @@ TEST_CASE("good unicode", "[loader]") {
     }());
 }
 
-TEST_CASE("good numbers", "[loader]") {
+TEST_CASE("good numbers", "[loader]") {}
 
-}
+TEST_CASE("bad numbers", "[loader]") {}
 
-TEST_CASE("bad numbers", "[loader]") {
-
-}
-
-TEST_CASE("json type error", "[loader]") {
-
-}
+TEST_CASE("json type error", "[loader]") {}

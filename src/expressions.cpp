@@ -24,6 +24,7 @@ JsonArray JsonExpressionParser::parse(const Json& json,
 
 void JsonExpressionParser::expr_err(const std::string& msg) {
     std::string res = "Json Expression Error: " + msg + '\n';
+    res += "position: " + std::to_string(current) + '\n';
     res += buffer + '\n';
     res += pretty_error_pointer(current);
     throw JsonExprErr(res);
@@ -547,6 +548,8 @@ int apply_operator(double& result, double operand, Operator operation) {
         }
         result /= operand;
         return 0;
+    default:
+        assert(0); // TODO: ugly
     }
 }
 
