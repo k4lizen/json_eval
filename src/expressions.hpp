@@ -1,7 +1,7 @@
 #pragma once
 
 #include "json.hpp"
-#include "parser.hpp"
+#include "generic_parser.hpp"
 
 namespace k4json {
 
