@@ -14,8 +14,10 @@ bool Parser::match(const char c) {
     return false;
 }
 
-// TODO: is this good design?
+// Runs match() and asserts it
+// Ensures side-effect
 void Parser::assert_match(const char c) {
+    // assert(match(c)) would get messed up with -DNDEBUG
     assert(peek() == c);
     next();
 }
