@@ -116,6 +116,10 @@ unsigned int JsonLoader::unhexbyte() {
     } else {
         current -= 1;
         syntax_err("invalid hex character in \\uXXXX escape sequence");
+        // "Need" to have this (to supress warning) since for some 
+        // reason gcc doesn't detect the [[noreturn]] attribute on overriding functions
+        // TODO: report bug to gcc
+        __builtin_unreachable();
     }
 }
 
@@ -234,6 +238,7 @@ std::string JsonLoader::parse_escaped() {
         return parse_unicode();
     default:
         syntax_err("invalid escape sequence");
+        __builtin_unreachable();
     }
 }
 
@@ -256,6 +261,7 @@ std::string JsonLoader::load_string() {
         default:
             if (static_cast<unsigned int>(c) < 0x20) {
                 syntax_err("strings cannot include unescaped control characters");
+                __builtin_unreachable();
             }
 
             sstream << c;
@@ -264,6 +270,7 @@ std::string JsonLoader::load_string() {
     }
 
     syntax_err("unterminated string");
+    __builtin_unreachable();
 }
 
 bool JsonLoader::match_false() {
@@ -337,6 +344,7 @@ Json JsonLoader::load_value() {
         }
 
         syntax_err("unexpected symbol for value");
+        __builtin_unreachable();
     }
 }
 
@@ -391,10 +399,12 @@ Json JsonLoader::load_object() {
             return node;
         default:
             syntax_err("unexpected symbol, wanted , or }");
+            __builtin_unreachable();
         }
     }
 
     syntax_err("reached EOF without closing curly brace");
+    __builtin_unreachable();
 }
 
 Json JsonLoader::load_array() {
@@ -431,10 +441,12 @@ Json JsonLoader::load_array() {
             break;
         default:
             syntax_err("unexpected symbol, wanted , or ]");
+            __builtin_unreachable();
         }
     }
 
     syntax_err("reached EOF without closing square brace");
+    __builtin_unreachable();
 }
 
 // Initiates the parsing logic of JsonLoader
@@ -455,6 +467,7 @@ Json JsonLoader::load(bool strict) {
             return load_array();
         default:
             syntax_err("json must be object or array");
+            __builtin_unreachable();
         }
     } else {
         return load_value();
