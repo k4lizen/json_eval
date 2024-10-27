@@ -1,6 +1,8 @@
 #include "utils.hpp"
 #include <string>
 
+namespace k4json {
+
 bool is_whitespace(char c) {
     return c == ' ' || c == '\n' || c == '\t' || c == '\r';
 }
@@ -54,3 +56,5 @@ std::string pretty_error_pointer(int padding) {
     res += '\n';
     return res;
 }
+
+} // namespace k4json

@@ -9,10 +9,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    using namespace k4json;
+    
     Json json;
     try {
         // Load and parse json from file
-        json = Json::from_file((std::string(argv[1])));
+        json = from_file((std::string(argv[1])));
     } catch (const JsonLoadErr& e) {
         std::cerr << e.what() << '\n';
         return 1;
@@ -22,13 +24,14 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        Json result = json.evaluate_expr(std::string(argv[2]));
+        JsonArray result = parse(json, std::string(argv[2]));
         // If the resulting JsonArray is only one element
         // we will extract it
-        if (result.get_type() == JsonType::ARRAY && result.size() == 1) {
-            result = result[0];
+        if (result.size() == 1) {
+            std::cout << result[0].to_string() << '\n';
+        } else {
+            std::cout << Json(result).to_string() << '\n';
         }
-        std::cout << result.to_string() << '\n';
     } catch (const JsonTypeErr& e) {
         std::cerr << e.what() << '\n';
         return 2;

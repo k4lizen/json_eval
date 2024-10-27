@@ -3,6 +3,8 @@
 
 #include "catch_amalgamated.hpp"
 
+using namespace k4json;
+
 TEST_CASE("json type error", "[json]") {
     std::string data = "{ \"a\": [1, \"abc\"] }";
 
@@ -43,7 +45,7 @@ TEST_CASE("json type error", "[json]") {
             j["a"]["b"];
         }(),
         JsonTypeErr,
-        EqualsJError("operator[std::string] invalid, instance isn't JsonType::OBJECT"));
+        EqualsJError("operator[std::string] invalid, instance isnt JsonType::OBJECT"));
 
     REQUIRE_NOTHROW([j] {
         REQUIRE(j["a"][1].get_string() == "abc");

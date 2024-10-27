@@ -7,6 +7,8 @@
 #include <variant>
 #include <format>
 
+namespace k4json {
+
 Json::Json() {
     _is_null = true;
     val = false; // set to null just in case
@@ -241,3 +243,13 @@ std::string Json::to_string(int indent) const {
         throw JsonTypeErr("Serialization failed, impossible json type.");
     }
 }
+
+Json from_string(const std::string& str) {
+    return JsonLoader::from_string(str);
+}
+
+Json from_file(const std::string& file_name) {
+    return JsonLoader::from_file(file_name);
+}
+
+} // namespace k4json

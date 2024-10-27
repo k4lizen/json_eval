@@ -6,6 +6,8 @@
 #include <variant>
 #include <vector>
 
+namespace k4json {
+
 class JsonTypeErr : public std::runtime_error {
 public:
     explicit JsonTypeErr(const std::string& msg) : std::runtime_error(msg) {}
@@ -36,7 +38,7 @@ public:
     explicit Json(const bool v);            // true / false literal
     explicit Json(const double num);        // number literal
     explicit Json(const std::string& str);  // string literal
-    explicit Json(const JsonObject& jmap);     // object
+    explicit Json(const JsonObject& jmap);  // object
     explicit Json(const JsonArray& jarray); // array
 
     static Json from_string(const std::string& str);
@@ -60,7 +62,7 @@ public:
     Json operator[](const int idx) const;
     Json operator[](std::string_view key) const;
     bool obj_contains(std::string_view key) const;
-    std::vector<std::string> get_obj_keys() const; 
+    std::vector<std::string> get_obj_keys() const;
     int size() const;
 
     // serialize the json object to a string
@@ -68,7 +70,11 @@ public:
 
 private:
     std::string to_string(int indent) const;
-    
+
     bool _is_null;
     std::variant<JsonObject, JsonArray, std::string, double, bool> val;
 };
+
+Json from_string(const std::string& str);
+Json from_file(const std::string& file_name);
+} // namespace k4json

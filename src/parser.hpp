@@ -2,6 +2,8 @@
 
 #include <string>
 
+namespace k4json {
+
 // Generic parser implementation
 class Parser {
 protected:
@@ -20,3 +22,5 @@ protected:
     unsigned int current; // index of character being parsed
     unsigned int line;    // line currently being parsed
 };
+
+} // namespace k4json

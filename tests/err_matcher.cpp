@@ -15,14 +15,14 @@ JsonErrorMatcher::JsonErrorMatcher(const std::string& err_msg) {
     this->err_msg = err_msg;
 }
 
-bool JsonErrorMatcher::match(const JsonLoadErr& err) const {
+bool JsonErrorMatcher::match(const k4json::JsonLoadErr& err) const {
     std::string expected = std::format("Load Error: {}\nline: {} position: {}",
                                        err_msg, line, position);
     std::string gotten = err.what();
     return gotten.find(expected) == 0;
 }
 
-bool JsonErrorMatcher::match(const JsonTypeErr& err) const {
+bool JsonErrorMatcher::match(const k4json::JsonTypeErr& err) const {
     return std::string(err.what()).find(err_msg) == 0;
 }
 

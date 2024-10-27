@@ -8,6 +8,8 @@
 #include "utils.hpp"
 #include "loader.hpp"
 
+namespace k4json {
+
 bool is_end_control(const char c) {
     return c == ',' || c == '}' || c == ']';
 }
@@ -458,3 +460,5 @@ Json JsonLoader::load(bool strict) {
         return load_value();
     }
 }
+
+} // namespace k4json

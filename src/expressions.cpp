@@ -5,6 +5,8 @@
 #include <cmath>
 #include <limits>
 
+namespace k4json {
+
 JsonExpressionParser::JsonExpressionParser(const Json& json,
                                            const std::string& expression) {
     // As per the spec
@@ -664,3 +666,9 @@ JsonArray JsonExpressionParser::parse() {
 
     return res;
 }
+
+JsonArray parse(const Json& json, const std::string& expression) {
+    return JsonExpressionParser::parse(json, expression);
+}
+
+} // namespace k4json

@@ -3,6 +3,8 @@
 #include <cassert>
 #include <charconv>
 
+namespace k4json {
+
 // Advance only if the next character matches param
 bool Parser::match(const char c) {
     if (peek() == c) {
@@ -116,3 +118,5 @@ bool Parser::match_number(double& number) {
     current = ptr - cbuff;
     return true;
 }
+
+} // namespace k4json

@@ -3,6 +3,8 @@
 #include "json.hpp"
 #include "parser.hpp"
 
+namespace k4json {
+
 class ExprSyntaxErr : public std::runtime_error {
 public:
     explicit ExprSyntaxErr(const std::string& msg) : std::runtime_error(msg) {}
@@ -61,4 +63,6 @@ private:
     JsonArray rootlist;
 };
 
+JsonArray parse(const Json& json, const std::string& expression);
 
+} // namespace k4json

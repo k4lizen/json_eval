@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <string>
 
+namespace k4json {
+
 class JsonLoadErr : public std::runtime_error {
 public:
     explicit JsonLoadErr(const std::string& msg) : std::runtime_error(msg) {}
@@ -39,3 +41,5 @@ private:
     bool match_false();
     bool match_null();
 };
+
+} // namespace k4json

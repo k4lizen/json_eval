@@ -4,6 +4,8 @@
 #include "catch_amalgamated.hpp"
 #include "loader.hpp"
 
+using namespace k4json;
+
 std::string data_loc = "tests/data/";
 
 TEST_CASE("correctly desirializes", "[loader]") {
