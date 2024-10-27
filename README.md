@@ -19,6 +19,6 @@ TODO: add real example from tests/data/
 make test
 ```
 ## Specification
-Parsing of the input json file follows the latest RFC specification https://www.rfc-editor.org/rfc/rfc8259.
+Parsing of the input json file follows the latest RFC specification https://www.rfc-editor.org/rfc/rfc8259 .
 
 Parsing of the query is a subset of https://www.rfc-editor.org/rfc/rfc9535 with certain extensions.

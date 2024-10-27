@@ -312,6 +312,7 @@ bool JsonLoader::match_null() {
 
 // If false is returned, number is undefined
 bool JsonLoader::match_number(double& number) {
+    // We are strictly conforming to:
     // https://www.rfc-editor.org/rfc/rfc8259#section-6
 
     // > Since software that implements
@@ -324,7 +325,7 @@ bool JsonLoader::match_number(double& number) {
 
     // We can't use strtod and friends for the conversion because they
     // don't conform to the json definition of a number, but from_chars
-    // does. Also, see Notes section in
+    // *mostly* does. Also, see Notes section in
     // https://en.cppreference.com/w/cpp/utility/from_chars
 
     const char* cbuff = buffer.c_str();
@@ -332,14 +333,26 @@ bool JsonLoader::match_number(double& number) {
     // initial valid part
     auto [ptr, ec] =
         std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
-
     if (ec == std::errc::invalid_argument) {
         // no number at that location
         return false;
     }
-
     if (ec == std::errc::result_out_of_range) {
         load_err("number out of range");
+    }
+
+    // Checks that from_chars doesn't perform
+    std::string_view numstr = std::string_view(buffer).substr(current, ptr - (current + cbuff));
+    // leading zeroes aren't allowed
+    if (numstr[0] == '0' && numstr != "0") {
+        load_err("number cannot have leading zeroes");
+    }
+    if (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '0' && numstr != "-0") {
+        load_err("(negative) number cannot have leading zeroes");
+    }
+    // omitting the integer part in a fraction (.123 like 0.123) isn't allowed
+    if (numstr[0] == '.' || (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '.')) {
+        load_err("fractional number must have integer component");
     }
 
     // valid number!

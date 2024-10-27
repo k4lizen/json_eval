@@ -272,8 +272,88 @@ TEST_CASE("good unicode", "[loader]") {
     }());
 }
 
-TEST_CASE("good numbers", "[loader]") {}
+TEST_CASE("good numbers", "[loader]") {
+    REQUIRE_NOTHROW([] {
+        std::string data = R"([1, 1.1, -1, 0, -0,
+                      1.11111111E+10,
+                      1.23456789E-11,
+                      1.23456789e+11,
+                      -1.23456789e-11
+                    ])";
+        Json j = JsonLoader::from_string(data);
+        REQUIRE(j.get_type() == JsonType::ARRAY);
+        REQUIRE(j.size() == 9);
+        REQUIRE(j[0].get_number() == 1);
+        REQUIRE(j[1].get_number() == 1.1);
+        REQUIRE(j[2].get_number() == -1);
+        REQUIRE(j[3].get_number() == 0);
+        REQUIRE(j[4].get_number() == -0);
+        REQUIRE(j[5].get_number() == 1.11111111E+10);
+        REQUIRE(j[6].get_number() == 1.23456789E-11);
+        REQUIRE(j[7].get_number() == 1.23456789e+11);
+        REQUIRE(j[8].get_number() == -1.23456789e-11);
+    }());
+}
 
-TEST_CASE("bad numbers", "[loader]") {}
+TEST_CASE("bad numbers", "[loader]") {
+    std::string unexp = "unexpected symbol for value";
+
+    SECTION("no preceding plus") {
+        std::string data = "[+1]";
+        REQUIRE_THROWS_MATCHES(
+            [data] {
+                JsonLoader::from_string(data);
+            }(),
+            JsonLoadErr, EqualsJError(1, 1, unexp));
+    }
+    SECTION("no hex") {
+        std::string data = "[0xA]";
+        REQUIRE_THROWS_MATCHES(
+            [data] {
+                JsonLoader::from_string(data);
+            }(),
+            JsonLoadErr, EqualsJError(1, 2, "unexpected symbol, wanted , or ]"));
+    }
+    SECTION("out of range") {
+        std::string data = "[1E1000]";
+        REQUIRE_THROWS_MATCHES(
+            [data] {
+                JsonLoader::from_string(data);
+            }(),
+            JsonLoadErr, EqualsJError(1, 1, "number out of range"));
+    }
+    SECTION("fraction needs integer component") {
+        std::string data = "[.123]";
+        REQUIRE_THROWS_MATCHES(
+            [data] {
+                JsonLoader::from_string(data);
+            }(),
+            JsonLoadErr, EqualsJError(1, 1, "fractional number must have integer component"));
+    }
+    SECTION("negative fraction needs integer component") {
+        std::string data = "[-.123]";
+        REQUIRE_THROWS_MATCHES(
+            [data] {
+                JsonLoader::from_string(data);
+            }(),
+            JsonLoadErr, EqualsJError(1, 1, "fractional number must have integer component"));
+    }
+    SECTION("leading zeroes aren't allowed") {
+        std::string data = "[01]";
+        REQUIRE_THROWS_MATCHES(
+            [data] {
+                JsonLoader::from_string(data);
+            }(),
+            JsonLoadErr, EqualsJError(1, 1, "number cannot have leading zeroes"));
+    }
+    SECTION("negative, leading zeroes aren't allowed") {
+        std::string data = "[-01]";
+        REQUIRE_THROWS_MATCHES(
+            [data] {
+                JsonLoader::from_string(data);
+            }(),
+            JsonLoadErr, EqualsJError(1, 1, "(negative) number cannot have leading zeroes"));
+    }
+}
 
 TEST_CASE("json type error", "[loader]") {}
