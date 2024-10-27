@@ -127,20 +127,6 @@ Json Json::operator[](const int idx) const {
 }
 
 // valid only for JsonType::OBJECT, must contain key
-Json Json::operator[](const std::string& key) const {
-    if (std::holds_alternative<JsonObject>(val)) {
-        auto obj = std::get<JsonObject>(val);
-        if (auto kv = obj.find(key); kv != obj.end()) {
-            return kv->second;
-        } else {
-            throw JsonTypeErr("object doesn't contain provided key");
-        }
-    } else {
-        throw JsonTypeErr("operator[std::string] invalid, instance isnt JsonType::OBJECT");
-    }
-}
-
-// valid only for JsonType::OBJECT, must contain key
 Json Json::operator[](std::string_view key) const {
     if (std::holds_alternative<JsonObject>(val)) {
         auto obj = std::get<JsonObject>(val);
@@ -155,14 +141,6 @@ Json Json::operator[](std::string_view key) const {
 }
 
 // valid only for JsonType::OBJECT
-bool Json::obj_contains(const std::string& key) const {
-    if (std::holds_alternative<JsonObject>(val)) {
-        return std::get<JsonObject>(val).contains(key);
-    } else {
-        throw JsonTypeErr("obj_contains called on Json which isnt JsonType::OBJECT");
-    }
-}
-
 bool Json::obj_contains(std::string_view key) const {
     if (std::holds_alternative<JsonObject>(val)) {
         return std::get<JsonObject>(val).contains(key);

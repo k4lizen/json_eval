@@ -58,9 +58,7 @@ public:
     JsonObject get_obj() const;
 
     Json operator[](const int idx) const;
-    Json operator[](const std::string& key) const;
     Json operator[](std::string_view key) const;
-    bool obj_contains(const std::string& key) const;
     bool obj_contains(std::string_view key) const;
     std::vector<std::string> get_obj_keys() const; 
     int size() const;
