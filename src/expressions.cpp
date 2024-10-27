@@ -22,11 +22,19 @@ JsonArray JsonExpressionParser::parse(const Json& json,
 }
 
 [[noreturn]] void JsonExpressionParser::syntax_err(const std::string& msg) {
-    std::string res = "Json Expression Error: " + msg + '\n';
+    std::string res = "Json Expression Syntax Error: " + msg + '\n';
     res += "position: " + std::to_string(current) + '\n';
     res += buffer + '\n';
     res += pretty_error_pointer(current);
-    throw JsonExprErr(res);
+    throw ExprSyntaxErr(res);
+}
+
+[[noreturn]] void JsonExpressionParser::value_err(const std::string& msg) {
+    std::string res = "Json Expression Value Error: " + msg + '\n';
+    res += "position: " + std::to_string(current) + '\n';
+    res += buffer + '\n';
+    res += pretty_error_pointer(current);
+    throw ExprValueErr(res);
 }
 
 JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
@@ -42,7 +50,7 @@ JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
 
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
-            syntax_err("function max() only accepts numerical arguments but "
+            value_err("function max() only accepts numerical arguments but "
                      "argument " +
                      std::to_string(idx) + " is:\n" + arg.get_string());
         }
@@ -68,7 +76,7 @@ JsonArray JsonExpressionParser::evaluate_min(std::vector<Json>& arguments) {
     
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
-            syntax_err("function min() only accepts numerical arguments but "
+            value_err("function min() only accepts numerical arguments but "
                      "argument " +
                      std::to_string(idx) + " is:\n" + arg.to_string());
         }
@@ -98,7 +106,7 @@ JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
         res.push_back(Json(static_cast<double>(arg.get_string().size())));
         break;
     default:
-        syntax_err("function size() is only valid for Json arrays, objects and "
+        value_err("function size() is only valid for Json arrays, objects and "
                  "strings");
     }
 
@@ -135,11 +143,10 @@ JsonArray JsonExpressionParser::parse_func(FuncType func) {
         if (expecting) {
             JsonArray cur = parse_inner();
             if (cur.empty()) {
-                syntax_err("function argument cannot evaluate to nothing");
+                value_err("function argument cannot evaluate to nothing");
             }
-            // TODO: differentiate syntactic errors and evaluation errors?
             if (cur.size() != 1) {
-                syntax_err("function argument must evaluate to one Json");
+                value_err("function argument must evaluate to one Json");
             }
             arguments.push_back(std::move(cur[0]));
             expecting = false;
@@ -206,7 +213,7 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     // containing either an integer or a string
     if (inside.size() != 1) {
         current -= 1;
-        syntax_err("expression inside [...] must evaluate to one value, "
+        value_err("expression inside [...] must evaluate to one value, "
                  "evaluates to:\n" +
                  Json(inside).to_string());
     }
@@ -217,7 +224,7 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
 
     if (inside[0].get_type() != JsonType::NUMBER) {
         current -= 1;
-        syntax_err("expression inside [...] must evaluate to [string] or "
+        value_err("expression inside [...] must evaluate to [string] or "
                  "[number], evaluates to:\n" +
                  Json(inside).to_string());
     }
@@ -225,7 +232,7 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     double number = inside[0].get_number();
     if (std::floor(number) != number) {
         current -= 1;
-        syntax_err("expression inside [...] evaluates to number (" +
+        value_err("expression inside [...] evaluates to number (" +
                  std::to_string(number) + "), but not an integer");
     }
 
@@ -571,7 +578,7 @@ JsonArray JsonExpressionParser::parse_inner() {
             }
 
             if (apply_operator(num_total, number, last_op) == 1) {
-                syntax_err("division by zero");
+                value_err("division by zero");
             }
 
             expecting = false;
@@ -586,7 +593,7 @@ JsonArray JsonExpressionParser::parse_inner() {
             }
 
             if (first_is_non_numeric) {
-                syntax_err("expression to the left of binary operator doesn't "
+                value_err("expression to the left of binary operator doesn't "
                          "resolve to [number]");
             }
 
@@ -616,7 +623,7 @@ JsonArray JsonExpressionParser::parse_inner() {
         JsonArray cur = parse_func_or_path();
         if (cur.size() == 1 && cur[0].get_type() == JsonType::NUMBER) {
             if (apply_operator(num_total, cur[0].get_number(), last_op) == 1) {
-                syntax_err("division by zero");
+                value_err("division by zero");
             }
         } else {
             if (last_op == Operator::NONE) {

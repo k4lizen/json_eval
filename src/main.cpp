@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
     } catch (const JsonTypeErr& e) {
         std::cerr << e.what() << '\n';
         return 2;
-    } catch (const JsonExprErr& e) {
+    } catch (const ExprSyntaxErr& e) {
         std::cerr << e.what() << '\n';
         return 7;
     }

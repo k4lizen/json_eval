@@ -355,5 +355,3 @@ TEST_CASE("bad numbers", "[loader]") {
             JsonLoadErr, EqualsJError(1, 1, "(negative) number cannot have leading zeroes"));
     }
 }
-
-TEST_CASE("json type error", "[loader]") {}

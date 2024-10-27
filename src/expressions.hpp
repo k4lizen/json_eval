@@ -3,9 +3,14 @@
 #include "json.hpp"
 #include "parser.hpp"
 
-class JsonExprErr : public std::runtime_error {
+class ExprSyntaxErr : public std::runtime_error {
 public:
-    explicit JsonExprErr(const std::string& msg) : std::runtime_error(msg) {}
+    explicit ExprSyntaxErr(const std::string& msg) : std::runtime_error(msg) {}
+};
+
+class ExprValueErr : public std::runtime_error {
+public:
+    explicit ExprValueErr(const std::string& msg) : std::runtime_error(msg) {}
 };
 
 enum class FuncType {
@@ -36,6 +41,7 @@ private:
     JsonArray parse_inner();
 
     [[noreturn]] void syntax_err(const std::string& msg) override;
+    [[noreturn]] void value_err(const std::string& msg);
 
     JsonArray parse_func_or_path();
     JsonArray parse_func(FuncType func);
