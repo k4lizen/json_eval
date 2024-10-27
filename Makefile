@@ -3,28 +3,37 @@ project := json_eval
 CXX := g++
 CXXFLAGS := -std=c++20 -Iexternal -Isrc -Wall -Wextra -g
 
-srcfiles := $(wildcard src/*.cpp)
-testfiles := $(wildcard tests/*.cpp)
+objects := main.o expressions.o generic_parser.o json.o loader.o utils.o
+objects := $(addprefix build/, $(objects))
 
-objects  := $(patsubst %.cpp, %.o, $(srcfiles))
-testobjects := $(patsubst %.cpp, %.o, $(testfiles))
+test_objects := err_matcher.o expressions.test.o json.test.o loader.test.o
+test_objects := $(addprefix build/tests/, $(test_objects))
 
 all: $(project)
 
 $(project): $(objects)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(project) $(objects) $(LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(project) $^
 
-test: $(testobjects) $(objects)
-	$(CXX) $(CXXFLAGS) -o runtests $(testobjects) $(filter-out src/main.o,$(objects)) external/catch_amalgamated.cpp $(LDLIBS)
+build/%.o: src/%.cpp | build_dir
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $^
+
+build_dir:
+	mkdir -p build
+
+test: runtests
 	./runtests -i
 
-depend: .depend
+runtests: $(objects) $(test_objects) build/catch_amalgamated.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(filter-out build/main.o, $^)
 
-.depend: $(srcfiles)
-	rm -f ./.depend
-	$(CXX) $(CXXFLAGS) -MM $^ >>./.depend;
+build/tests/%.o: tests/%.cpp | test_build_dir
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $^
 
+test_build_dir:
+	mkdir -p build/tests
+	
+build/catch_amalgamated.o: external/catch_amalgamated.cpp
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $^
+	
 clean:
-	rm -f $(objects) $(testobjects)
-
-include .depend
+	rm -r build/*
