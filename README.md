@@ -56,3 +56,7 @@ Functions aren't selectors, they can be used freely in expressions `"min(4, size
 
 Binary operators are allowed in expressions e.g. `size(arr) + 3`, there are `+`, `-`, `*` and `/`. You can also use brackets `(` and `)` to enforce an order of operations other than left->right (important for expected behaviour of `*` and `/`!).
 
+## Trivia
+Bugs that came out of this project:
++ gcc \[\[noreturn\]\]: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117337 (marked as dup :( )
++ gdb mangling(?): https://sourceware.org/bugzilla/show_bug.cgi?id=32306

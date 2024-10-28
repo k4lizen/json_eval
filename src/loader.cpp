@@ -118,7 +118,8 @@ unsigned int JsonLoader::unhexbyte() {
         syntax_err("invalid hex character in \\uXXXX escape sequence");
         // "Need" to have this (to supress warning) since for some 
         // reason gcc doesn't detect the [[noreturn]] attribute on overriding functions
-        // TODO: report bug to gcc
+        // 10 year anniversary for the bug!
+        // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117337
         __builtin_unreachable();
     }
 }
