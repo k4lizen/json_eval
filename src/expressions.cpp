@@ -358,10 +358,6 @@ JsonExpressionParser::parse_name_selector_quoted(const JsonArray& nodelist,
 }
 
 JsonArray JsonExpressionParser::parse_selector(const JsonArray& nodelist) {
-    if (nodelist.empty()) {
-        return JsonArray();
-    }
-
     // I) We have three valid selectors inside brackets:
     // 1. (single or double) quote escaped: ["some field"]; ['some field']
     //     denoting an object key
@@ -457,9 +453,8 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
     // something+ (et al.)
     //     same as above
 
-    // TODO:
-    // something +, something [, something .
-    // aren't allowed but they should be
+    // We also need to allow stuff like "something    ["
+    // but not "some thing[".
 
     c = peek();
     if (c == '[') {
@@ -475,12 +470,16 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
     }
     c = next();
 
+    // Set to true after we hit whitespace
+    bool expecting_control = false;
+    int end = current;
+    
     while (!reached_end()) {
         switch (c) {
         case '(': {
             // something( function
             std::string_view sv =
-                std::string_view(buffer).substr(start, current - start);
+                std::string_view(buffer).substr(start, end - start);
             FuncType func = string_to_functype(sv);
             return parse_func(func);
         }
@@ -488,20 +487,38 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
         case '[':
             // something. or something[ path
             return parse_path(
-                std::string_view(buffer).substr(start, current - start));
+                std::string_view(buffer).substr(start, end - start));
         default:
-            if (is_binary_operator(c) || c == ']' || c == ')') {
+            if (expecting_control) {
+                // Could be valid if character is ) or ] etc.
+                // will let the caller handle it
                 return parse_name(rootlist, std::string_view(buffer).substr(
-                                                start, current - start));
+                                                start, end - start));
+            }    
+        
+            // Part of the name
+            if (valid_dot_name_char(c)) {
+                break;
             }
 
-            if (!valid_dot_name_char(c)) {
-                syntax_err("invalid character in dot-notation name selector or "
-                         "function name");
+            if (is_whitespace(c)) {
+                skip();
+                current -= 1; // undoing the next()
+                expecting_control = true;
+                // One chance to match "something  [", "something  ." or "something  ("
+                // otherwise we're letting the caller handle it
+            } else {
+                // Could be an error or a valid subexpression like "[something]"
+                // the caller will decide
+                return parse_name(rootlist, std::string_view(buffer).substr(
+                                                                start, end - start));
             }
         }
 
         c = next();
+        if (!expecting_control) {
+            end = current;
+        }
     }
 
     // something<end of string>

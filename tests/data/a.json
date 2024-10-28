@@ -1,1 +1,28 @@
 
+{
+    "mm": {
+        "4": 4,
+        "this is": "pretty cool",
+        "nya": {
+            "awa": "peko"
+        },
+        "key": {
+            "a": true,
+            "b": false,
+            "c": null
+        },
+        "arr": [
+            "a",
+            "bnewline\n\fcc\rc\b\n\na\"quotes\"",
+            [],
+            null,
+            true,
+            3.13,
+            { "a": {} },
+            [ "a", {"b": ["c"] }]
+        ],
+        "num": -10120.23029E+39
+    },
+    "ic": "something\u000A\u0041bb\uAAAA\uD801\uDD01nya",
+    "b": "arr"
+}
