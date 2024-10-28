@@ -1,4 +1,5 @@
 #include "err_matcher.hpp"
+#include "expressions.hpp"
 
 #include <format>
 
@@ -15,9 +16,29 @@ JsonErrorMatcher::JsonErrorMatcher(const std::string& err_msg) {
     this->err_msg = err_msg;
 }
 
+JsonErrorMatcher::JsonErrorMatcher(int position, const std::string& err_msg) {
+    this->line = -1;
+    this->position = position;
+    this->err_msg = err_msg;
+}
+
 bool JsonErrorMatcher::match(const k4json::JsonLoadErr& err) const {
     std::string expected = std::format("Load Error: {}\nline: {} position: {}",
                                        err_msg, line, position);
+    std::string gotten = err.what();
+    return gotten.find(expected) == 0;
+}
+
+bool JsonErrorMatcher::match(const k4json::ExprSyntaxErr& err) const {
+    std::string expected = std::format("Json Expression Syntax Error: {}\nposition: {}",
+                                       err_msg, position);
+    std::string gotten = err.what();
+    return gotten.find(expected) == 0;
+}
+
+bool JsonErrorMatcher::match(const k4json::ExprValueErr& err) const {
+    std::string expected = std::format("Json Expression Value Error: {}\nposition: {}",
+                                       err_msg, position);
     std::string gotten = err.what();
     return gotten.find(expected) == 0;
 }
@@ -45,6 +66,10 @@ std::string JsonErrorMatcher::toString() const {
 JsonErrorMatcher EqualsJError(int line, int position,
                               const std::string& err_msg) {
     return JsonErrorMatcher(line, position, err_msg);
+}
+
+JsonErrorMatcher EqualsJError(int position, const std::string& err_msg) {
+    return JsonErrorMatcher(position, err_msg);
 }
 
 JsonErrorMatcher EqualsJError(const std::string& err_msg) {

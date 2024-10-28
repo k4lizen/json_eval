@@ -22,7 +22,7 @@ Example json file tests/data/simple.json:
 }
 ```
 Commands:
-```bash
+```
 ~> ./json_eval
 usage: ./json_eval <json file> <query>
 
