@@ -427,16 +427,12 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
         // jsonpath-query      = root-identifier segments
         // segments            = *(S segment)
         skip();
-        // no way to do size($) currently
-        if (reached_end()) {
+        c = peek();
+        if (c == '.' || c == '[') {
+            return parse_path("");
+        } else {
             return rootlist;
         }
-        c = peek();
-        if (c != '.' && c != '[') {
-            syntax_err("invalid character, expected . or [");
-        }
-
-        return parse_path("");
     }
     // Posibilities:
     // [
@@ -635,7 +631,18 @@ JsonArray JsonExpressionParser::parse_inner() {
             break;
         }
 
-        JsonArray cur = parse_func_or_path();
+        JsonArray cur;
+        // Allowing arithmetic order of operations
+        if (match('(')) {
+            cur = parse_inner();
+            skip();
+            if (!match(')')) {
+                syntax_err("expected )");
+            }
+        } else {
+            cur = parse_func_or_path();
+        }
+
         if (cur.size() == 1 && cur[0].get_type() == JsonType::NUMBER) {
             if (apply_operator(num_total, cur[0].get_number(), last_op) == 1) {
                 value_err("division by zero");

@@ -89,7 +89,7 @@ bool Parser::match_number(double& number) {
     // We give it the whole rest of the buffer, it will only care about the
     // initial valid part
     auto [ptr, ec] =
-        std::from_chars(cbuff + current, cbuff + buffer.size() - 1, number);
+        std::from_chars(cbuff + current, cbuff + buffer.size(), number);
     if (ec == std::errc::invalid_argument) {
         // no number at that location
         return false;
