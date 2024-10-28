@@ -20,10 +20,11 @@ int main(int argc, char* argv[]) {
         return 1;
     } catch (const std::runtime_error& e) {
         std::cerr << e.what() << '\n';
-        return 3;
+        return 2;
     }
 
     try {
+        // Parse the query
         JsonArray result = parse(json, std::string(argv[2]));
         // If the resulting JsonArray is only one element
         // we will extract it
@@ -34,10 +35,13 @@ int main(int argc, char* argv[]) {
         }
     } catch (const JsonTypeErr& e) {
         std::cerr << e.what() << '\n';
-        return 2;
+        return 3;
     } catch (const ExprSyntaxErr& e) {
         std::cerr << e.what() << '\n';
-        return 7;
+        return 4;
+    } catch (const ExprValueErr& e) {
+        std::cerr << e.what() << '\n';
+        return 5;
     }
 
     return 0;
