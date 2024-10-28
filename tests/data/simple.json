@@ -1,0 +1,11 @@
+{
+  "arr": [
+    1, 2,
+    "a", "b",
+    {
+      "c": [true, false, null]
+    }
+  ],
+  "some string": "something\u000A\u0041bb\uAAAA\uD801\uDD01nya",
+  "two": 2
+}
