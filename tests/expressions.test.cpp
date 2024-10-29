@@ -67,5 +67,29 @@ TEST_CASE("dotted name selectors", "[expression][syntax]") {
 
         result = parse(json, "⭐");
         REQUIRE(result[0].get_string() == "⭐⭐");
+
+        result = parse(json, "$.⭐");
+        REQUIRE(result[0].get_string() == "⭐⭐");
     }());
+
+    const std::string invalid_first =
+        "invalid first character for dot-notation name selector";
+
+    REQUIRE_THROWS_MATCHES(
+        [] {
+            parse(json, " mm   .  key");
+        }(),
+        ExprSyntaxErr, EqualsJError(7, invalid_first));
+
+    REQUIRE_THROWS_MATCHES(
+        [] {
+            parse(json, "mm.4key");
+        }(),
+        ExprSyntaxErr, EqualsJError(3, invalid_first));
+
+    REQUIRE_THROWS_MATCHES(
+        [] {
+            parse(json, "mm.k\tey");
+        }(),
+        ExprSyntaxErr, EqualsJError(5, "expected end of expression"));
 }
