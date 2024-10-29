@@ -184,7 +184,7 @@ int Json::nchildren() const {
         for (auto& x : std::get<JsonArray>(val)) {
             res += x.nchildren();
         }
-    } else if (type == JsonType::OBJECT){
+    } else if (type == JsonType::OBJECT) {
         for (auto& x : std::get<JsonObject>(val)) {
             res += x.second.nchildren();
         }

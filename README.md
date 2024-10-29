@@ -1,5 +1,7 @@
 JSON processor (deserialize and query) written in C++
 
+One pass, no tokenization.
+
 ## Building
 ```
 git clone https://github.com/k4lizen/json_eval.git

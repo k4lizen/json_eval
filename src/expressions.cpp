@@ -54,9 +54,10 @@ JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
 
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
+            current -= 1;
             value_err("function max() only accepts numerical arguments but "
                       "argument " +
-                      std::to_string(idx) + " is:\n" + arg.get_string());
+                      std::to_string(idx) + " is:\n" + arg.to_string());
         }
         mx = std::max(mx, arg.get_number());
         idx += 1;
@@ -80,6 +81,7 @@ JsonArray JsonExpressionParser::evaluate_min(std::vector<Json>& arguments) {
 
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
+            current -= 1;
             value_err("function min() only accepts numerical arguments but "
                       "argument " +
                       std::to_string(idx) + " is:\n" + arg.to_string());
@@ -116,7 +118,8 @@ JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
 }
 
 // Adds up the total amount of jsons compromising the arguments
-JsonArray JsonExpressionParser::evaluate_nchildren(std::vector<Json>& arguments) {
+JsonArray
+JsonExpressionParser::evaluate_nchildren(std::vector<Json>& arguments) {
     int res = 0;
 
     for (auto& arg : arguments) {
@@ -218,8 +221,6 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     // Luckily digits aren't allowed as the first character for dot-notation
     // names, so we always interpret digits like literals (as index) in cases
     // like this.
-
-    // TODO: do I want multi-indexing?
 
     JsonArray inside = parse_inner();
 
@@ -423,7 +424,6 @@ JsonArray JsonExpressionParser::parse_path(std::string_view obj_beginning) {
     }
 
     while (!reached_end() && (c == '.' || c == '[')) {
-        // TODO: a copy happens here (trust), how to optimize?
         // this->current gets advanced inside \/
         res = parse_selector(res);
         skip();
@@ -670,11 +670,15 @@ JsonArray JsonExpressionParser::parse_inner() {
                 res = std::move(cur);
                 first_is_non_numeric = true;
             } else {
-                syntax_err("expression to the right of binary operator doesn't "
-                           "resolve to [number]");
+                value_err("expression to the right of binary operator doesn't "
+                          "resolve to [number]");
             }
         }
         expecting = false;
+    }
+
+    if (expecting) {
+        syntax_err("expected value");
     }
 
     if (first_is_non_numeric) {
