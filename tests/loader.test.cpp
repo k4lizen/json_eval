@@ -1,8 +1,8 @@
+#include "loader.hpp"
 #include "err_matcher.hpp"
 #include "json.hpp"
 
 #include "catch_amalgamated.hpp"
-#include "loader.hpp"
 
 using namespace k4json;
 
@@ -314,7 +314,8 @@ TEST_CASE("bad numbers", "[loader]") {
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, EqualsJError(1, 2, "unexpected symbol, wanted , or ]"));
+            JsonLoadErr,
+            EqualsJError(1, 2, "unexpected symbol, wanted , or ]"));
     }
     SECTION("out of range") {
         std::string data = "[1E1000]";
@@ -330,7 +331,9 @@ TEST_CASE("bad numbers", "[loader]") {
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, EqualsJError(1, 1, "fractional number must have integer component"));
+            JsonLoadErr,
+            EqualsJError(1, 1,
+                         "fractional number must have integer component"));
     }
     SECTION("negative fraction needs integer component") {
         std::string data = "[-.123]";
@@ -338,7 +341,9 @@ TEST_CASE("bad numbers", "[loader]") {
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, EqualsJError(1, 1, "fractional number must have integer component"));
+            JsonLoadErr,
+            EqualsJError(1, 1,
+                         "fractional number must have integer component"));
     }
     SECTION("leading zeroes aren't allowed") {
         std::string data = "[01]";
@@ -346,7 +351,8 @@ TEST_CASE("bad numbers", "[loader]") {
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, EqualsJError(1, 1, "number cannot have leading zeroes"));
+            JsonLoadErr,
+            EqualsJError(1, 1, "number cannot have leading zeroes"));
     }
     SECTION("negative, leading zeroes aren't allowed") {
         std::string data = "[-01]";
@@ -354,6 +360,7 @@ TEST_CASE("bad numbers", "[loader]") {
             [data] {
                 JsonLoader::from_string(data);
             }(),
-            JsonLoadErr, EqualsJError(1, 1, "(negative) number cannot have leading zeroes"));
+            JsonLoadErr,
+            EqualsJError(1, 1, "(negative) number cannot have leading zeroes"));
     }
 }

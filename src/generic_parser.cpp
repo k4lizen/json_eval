@@ -1,5 +1,6 @@
 #include "generic_parser.hpp"
 #include "utils.hpp"
+
 #include <cassert>
 #include <charconv>
 
@@ -100,18 +101,21 @@ bool Parser::match_number(double& number) {
     }
 
     // Checks that from_chars doesn't perform
-    std::string_view numstr = std::string_view(buffer).substr(current, ptr - (current + cbuff));
+    std::string_view numstr =
+        std::string_view(buffer).substr(current, ptr - (current + cbuff));
     // leading zeroes aren't allowed
     if (numstr[0] == '0' && numstr != "0") {
         syntax_err("number cannot have leading zeroes");
         return false;
     }
-    if (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '0' && numstr != "-0") {
+    if (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '0' &&
+        numstr != "-0") {
         syntax_err("(negative) number cannot have leading zeroes");
         return false;
     }
     // omitting the integer part in a fraction (.123 like 0.123) isn't allowed
-    if (numstr[0] == '.' || (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '.')) {
+    if (numstr[0] == '.' ||
+        (numstr.size() > 1 && numstr[0] == '-' && numstr[1] == '.')) {
         syntax_err("fractional number must have integer component");
         return false;
     }

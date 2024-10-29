@@ -1,7 +1,7 @@
 #pragma once
 
-#include "json.hpp"
 #include "generic_parser.hpp"
+#include "json.hpp"
 
 #include <stdexcept>
 #include <string>

@@ -1,6 +1,7 @@
 #include "expressions.hpp"
 #include "json.hpp"
 #include "loader.hpp"
+
 #include <iostream>
 
 int main(int argc, char* argv[]) {
@@ -10,7 +11,7 @@ int main(int argc, char* argv[]) {
     }
 
     using namespace k4json;
-    
+
     Json json;
     try {
         // Load and parse json from file

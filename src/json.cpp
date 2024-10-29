@@ -2,10 +2,11 @@
 #include "expressions.hpp"
 #include "loader.hpp"
 #include "utils.hpp"
+
 #include <cassert>
 #include <cmath>
-#include <variant>
 #include <format>
+#include <variant>
 
 namespace k4json {
 
@@ -94,7 +95,8 @@ double Json::get_number() const {
     if (std::holds_alternative<double>(val)) {
         return std::get<double>(val);
     }
-    throw JsonTypeErr("get_number() called on Json which isnt JsonType::NUMBER");
+    throw JsonTypeErr(
+        "get_number() called on Json which isnt JsonType::NUMBER");
 }
 
 // valid only for JsonType::STRING
@@ -102,7 +104,8 @@ std::string Json::get_string() const {
     if (std::holds_alternative<std::string>(val)) {
         return std::get<std::string>(val);
     }
-    throw JsonTypeErr("get_string() called on Json which isnt JsonType::STRING");
+    throw JsonTypeErr(
+        "get_string() called on Json which isnt JsonType::STRING");
 }
 
 JsonArray Json::get_array() const {
@@ -124,7 +127,8 @@ Json Json::operator[](const int idx) const {
     if (std::holds_alternative<JsonArray>(val)) {
         return std::get<JsonArray>(val).at(idx);
     } else {
-        throw JsonTypeErr("operator[int] invalid, instance isnt JsonType::ARRAY");
+        throw JsonTypeErr(
+            "operator[int] invalid, instance isnt JsonType::ARRAY");
     }
 }
 
@@ -138,7 +142,8 @@ Json Json::operator[](std::string_view key) const {
             throw JsonTypeErr("object doesn't contain provided key");
         }
     } else {
-        throw JsonTypeErr("operator[std::string] invalid, instance isnt JsonType::OBJECT");
+        throw JsonTypeErr(
+            "operator[std::string] invalid, instance isnt JsonType::OBJECT");
     }
 }
 
@@ -147,7 +152,8 @@ bool Json::obj_contains(std::string_view key) const {
     if (std::holds_alternative<JsonObject>(val)) {
         return std::get<JsonObject>(val).contains(key);
     } else {
-        throw JsonTypeErr("obj_contains called on Json which isnt JsonType::OBJECT");
+        throw JsonTypeErr(
+            "obj_contains called on Json which isnt JsonType::OBJECT");
     }
 }
 
@@ -178,13 +184,14 @@ Json Json::from_file(const std::string& file_name) {
 
 std::vector<std::string> Json::get_obj_keys() const {
     if (!std::holds_alternative<JsonObject>(val)) {
-        throw JsonTypeErr("get_obj_keys() called on Json which isnt JsonType::OBJECT");
+        throw JsonTypeErr(
+            "get_obj_keys() called on Json which isnt JsonType::OBJECT");
     }
 
     JsonObject jobj = std::get<JsonObject>(val);
     std::vector<std::string> keys;
     keys.reserve(jobj.size());
-    for(auto& it : jobj) {
+    for (auto& it : jobj) {
         keys.push_back(it.first);
     }
     return keys;
@@ -208,10 +215,12 @@ std::string Json::to_string(int indent) const {
         res = "{\n";
         std::vector<std::string> keys = get_obj_keys();
         int n = keys.size();
-        for(int i = 0; i < n - 1; ++i) {
-            res += s_indent + '"' + keys[i] + "\": " + (*this)[keys[i]].to_string(indent+1) + ",\n";
+        for (int i = 0; i < n - 1; ++i) {
+            res += s_indent + '"' + keys[i] +
+                   "\": " + (*this)[keys[i]].to_string(indent + 1) + ",\n";
         }
-        res += s_indent + '"' + keys[n - 1] + "\": " + (*this)[keys[n - 1]].to_string(indent+1) + '\n';
+        res += s_indent + '"' + keys[n - 1] +
+               "\": " + (*this)[keys[n - 1]].to_string(indent + 1) + '\n';
         res += s_indent_less + "}";
         return res;
     }
@@ -220,10 +229,10 @@ std::string Json::to_string(int indent) const {
             return "[ ]";
         }
         res = "[\n";
-        for (int i = 0; i < size() - 1; ++i){
-            res += s_indent + (*this)[i].to_string(indent+1) + ",\n";
+        for (int i = 0; i < size() - 1; ++i) {
+            res += s_indent + (*this)[i].to_string(indent + 1) + ",\n";
         }
-        res += s_indent + (*this)[size() - 1].to_string(indent+1) + '\n';
+        res += s_indent + (*this)[size() - 1].to_string(indent + 1) + '\n';
         res += s_indent_less + "]";
         return res;
     }

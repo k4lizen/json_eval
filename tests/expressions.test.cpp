@@ -3,7 +3,6 @@
 #include "json.hpp"
 
 #include "catch_amalgamated.hpp"
-#include "loader.hpp"
 
 using namespace k4json;
 
@@ -11,7 +10,7 @@ Json json = from_file("tests/data/a.json");
 
 TEST_CASE("simple test", "[expression][syntax]") {
     REQUIRE_NOTHROW([] {
-        JsonArray result = parse(json, "$.mm['4']");  
+        JsonArray result = parse(json, "$.mm['4']");
         REQUIRE(result.size() == 1);
         REQUIRE(result[0].get_number() == 4);
     }());
@@ -19,7 +18,7 @@ TEST_CASE("simple test", "[expression][syntax]") {
 
 TEST_CASE("quoted name selectors", "[expression][syntax]") {
     REQUIRE_NOTHROW([] {
-        JsonArray result = parse(json, "  mm   [\"key\"]   ['a']  ");  
+        JsonArray result = parse(json, "  mm   [\"key\"]   ['a']  ");
         REQUIRE(result.size() == 1);
         REQUIRE(result[0].get_bool() == true);
 
@@ -29,18 +28,20 @@ TEST_CASE("quoted name selectors", "[expression][syntax]") {
         result = parse(json, "$  ['⭐']");
         REQUIRE(result[0].get_string() == "⭐⭐");
     }());
-    
+
     REQUIRE_THROWS_MATCHES(
         [] {
             parse(json, "['mm]");
         }(),
-        ExprSyntaxErr, EqualsJError(5, "query ended early: unterminated name selector"));
+        ExprSyntaxErr,
+        EqualsJError(5, "query ended early: unterminated name selector"));
 
     REQUIRE_THROWS_MATCHES(
         [] {
             parse(json, "[\"mm]\"");
         }(),
-        ExprSyntaxErr, EqualsJError(6, "unterminated name selector, expected ]"));
+        ExprSyntaxErr,
+        EqualsJError(6, "unterminated name selector, expected ]"));
 
     REQUIRE_THROWS_MATCHES(
         [] {
@@ -67,5 +68,4 @@ TEST_CASE("dotted name selectors", "[expression][syntax]") {
         result = parse(json, "⭐");
         REQUIRE(result[0].get_string() == "⭐⭐");
     }());
-
 }

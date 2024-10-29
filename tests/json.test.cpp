@@ -45,7 +45,8 @@ TEST_CASE("json type error", "[json]") {
             j["a"]["b"];
         }(),
         JsonTypeErr,
-        EqualsJError("operator[std::string] invalid, instance isnt JsonType::OBJECT"));
+        EqualsJError(
+            "operator[std::string] invalid, instance isnt JsonType::OBJECT"));
 
     REQUIRE_NOTHROW([j] {
         REQUIRE(j["a"][1].get_string() == "abc");

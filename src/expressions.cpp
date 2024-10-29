@@ -1,6 +1,7 @@
 #include "expressions.hpp"
 #include "json.hpp"
 #include "utils.hpp"
+
 #include <cassert>
 #include <cmath>
 #include <limits>
@@ -40,7 +41,8 @@ JsonArray JsonExpressionParser::parse(const Json& json,
 }
 
 JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
-    double mx = std::numeric_limits<double>::lowest(); // min() is closest to zero.. wow.
+    double mx = std::numeric_limits<double>::lowest(); // min() is closest to
+                                                       // zero.. wow.
     int idx = 0;
 
     JsonArray args;
@@ -53,8 +55,8 @@ JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
             value_err("function max() only accepts numerical arguments but "
-                     "argument " +
-                     std::to_string(idx) + " is:\n" + arg.get_string());
+                      "argument " +
+                      std::to_string(idx) + " is:\n" + arg.get_string());
         }
         mx = std::max(mx, arg.get_number());
         idx += 1;
@@ -68,19 +70,19 @@ JsonArray JsonExpressionParser::evaluate_max(std::vector<Json>& arguments) {
 JsonArray JsonExpressionParser::evaluate_min(std::vector<Json>& arguments) {
     double mn = std::numeric_limits<double>::max();
     int idx = 0;
-    
+
     JsonArray args;
     if (arguments.size() == 1 && arguments[0].get_type() == JsonType::ARRAY) {
         args = arguments[0].get_array();
     } else {
         args = arguments;
     }
-    
+
     for (auto& arg : args) {
         if (arg.get_type() != JsonType::NUMBER) {
             value_err("function min() only accepts numerical arguments but "
-                     "argument " +
-                     std::to_string(idx) + " is:\n" + arg.to_string());
+                      "argument " +
+                      std::to_string(idx) + " is:\n" + arg.to_string());
         }
         mn = std::min(mn, arg.get_number());
         idx += 1;
@@ -109,7 +111,7 @@ JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
         break;
     default:
         value_err("function size() is only valid for Json arrays, objects and "
-                 "strings");
+                  "strings");
     }
 
     return res;
@@ -216,8 +218,8 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     if (inside.size() != 1) {
         current -= 1;
         value_err("expression inside [...] must evaluate to one value, "
-                 "evaluates to:\n" +
-                 Json(inside).to_string());
+                  "evaluates to:\n" +
+                  Json(inside).to_string());
     }
 
     if (inside[0].get_type() == JsonType::STRING) {
@@ -227,15 +229,15 @@ JsonArray JsonExpressionParser::parse_expr_selector(const JsonArray& nodelist) {
     if (inside[0].get_type() != JsonType::NUMBER) {
         current -= 1;
         value_err("expression inside [...] must evaluate to [string] or "
-                 "[number], evaluates to:\n" +
-                 Json(inside).to_string());
+                  "[number], evaluates to:\n" +
+                  Json(inside).to_string());
     }
 
     double number = inside[0].get_number();
     if (std::floor(number) != number) {
         current -= 1;
         value_err("expression inside [...] evaluates to number (" +
-                 std::to_string(number) + "), but not an integer");
+                  std::to_string(number) + "), but not an integer");
     }
 
     // https://www.rfc-editor.org/rfc/rfc9535#name-semantics-5
@@ -462,14 +464,14 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
     // characters
     if (!valid_dot_name_first(c)) {
         syntax_err("invalid first character in dot-notation name selector or "
-                 "function name");
+                   "function name");
     }
     c = next();
 
     // Set to true after we hit whitespace
     bool expecting_control = false;
     int end = current;
-    
+
     while (!reached_end()) {
         switch (c) {
         case '(': {
@@ -490,8 +492,8 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
                 // will let the caller handle it
                 return parse_name(rootlist, std::string_view(buffer).substr(
                                                 start, end - start));
-            }    
-        
+            }
+
             // Part of the name
             if (valid_dot_name_char(c)) {
                 break;
@@ -501,13 +503,13 @@ JsonArray JsonExpressionParser::parse_func_or_path() {
                 skip();
                 current -= 1; // undoing the next()
                 expecting_control = true;
-                // One chance to match "something  [", "something  ." or "something  ("
-                // otherwise we're letting the caller handle it
+                // One chance to match "something  [", "something  ." or
+                // "something  (" otherwise we're letting the caller handle it
             } else {
                 // Could be an error or a valid subexpression like "[something]"
                 // the caller will decide
                 return parse_name(rootlist, std::string_view(buffer).substr(
-                                                                start, end - start));
+                                                start, end - start));
             }
         }
 
@@ -584,8 +586,9 @@ JsonArray JsonExpressionParser::parse_inner() {
                     continue;
                 }
 
-                syntax_err("expecting end of expression or binary operator, got "
-                         "number");
+                syntax_err(
+                    "expecting end of expression or binary operator, got "
+                    "number");
             }
 
             if (apply_operator(num_total, number, last_op) == 1) {
@@ -605,7 +608,7 @@ JsonArray JsonExpressionParser::parse_inner() {
 
             if (first_is_non_numeric) {
                 value_err("expression to the left of binary operator doesn't "
-                         "resolve to [number]");
+                          "resolve to [number]");
             }
 
             switch (c) {
@@ -653,7 +656,7 @@ JsonArray JsonExpressionParser::parse_inner() {
                 first_is_non_numeric = true;
             } else {
                 syntax_err("expression to the right of binary operator doesn't "
-                         "resolve to [number]");
+                           "resolve to [number]");
             }
         }
         expecting = false;

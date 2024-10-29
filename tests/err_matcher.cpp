@@ -30,15 +30,15 @@ bool JsonErrorMatcher::match(const k4json::JsonLoadErr& err) const {
 }
 
 bool JsonErrorMatcher::match(const k4json::ExprSyntaxErr& err) const {
-    std::string expected = std::format("Json Expression Syntax Error: {}\nposition: {}",
-                                       err_msg, position);
+    std::string expected = std::format(
+        "Json Expression Syntax Error: {}\nposition: {}", err_msg, position);
     std::string gotten = err.what();
     return gotten.find(expected) == 0;
 }
 
 bool JsonErrorMatcher::match(const k4json::ExprValueErr& err) const {
-    std::string expected = std::format("Json Expression Value Error: {}\nposition: {}",
-                                       err_msg, position);
+    std::string expected = std::format(
+        "Json Expression Value Error: {}\nposition: {}", err_msg, position);
     std::string gotten = err.what();
     return gotten.find(expected) == 0;
 }

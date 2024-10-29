@@ -5,8 +5,8 @@
 #include <stdexcept>
 
 #include "json.hpp"
-#include "utils.hpp"
 #include "loader.hpp"
+#include "utils.hpp"
 
 namespace k4json {
 
@@ -47,7 +47,7 @@ std::string JsonLoader::error_line() {
         cur_line_num + ":" + buffer.substr(ln_start + 1, (ln_end - ln_start));
 
     // if this is the last line of the file, it may not have a \n
-    if (desc[desc.size() - 1] != '\n'){
+    if (desc[desc.size() - 1] != '\n') {
         desc += '\n';
     }
 
@@ -101,7 +101,6 @@ JsonLoader::JsonLoader(const std::string& data) {
     current = 0;
 }
 
-
 // Consumes a hex character from the buffer and returns it
 unsigned int JsonLoader::unhexbyte() {
     char c = peek();
@@ -116,9 +115,9 @@ unsigned int JsonLoader::unhexbyte() {
     } else {
         current -= 1;
         syntax_err("invalid hex character in \\uXXXX escape sequence");
-        // "Need" to have this (to supress warning) since for some 
-        // reason gcc doesn't detect the [[noreturn]] attribute on overriding functions
-        // 10 year anniversary for the bug!
+        // "Need" to have this (to supress warning) since for some
+        // reason gcc doesn't detect the [[noreturn]] attribute on overriding
+        // functions 10 year anniversary for the bug!
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=117337
         __builtin_unreachable();
     }
@@ -159,7 +158,7 @@ std::string JsonLoader::parse_unicode() {
     // surrogate pair, low part
     if (0xDC00 <= codepoint && codepoint <= 0xDFFF) {
         syntax_err("codepoint is for the low part of a utf-16 surrogate pair, "
-                 "but there is no preceding high part");
+                   "but there is no preceding high part");
     }
 
     // surrogate pair, high part
@@ -171,7 +170,8 @@ std::string JsonLoader::parse_unicode() {
         unsigned int low_part = parse_codepoint();
         if (!(0xDC00 <= low_part && low_part <= 0xDFFF)) {
             current -= 4;
-            syntax_err("codepoint isn't valid low part of utf-16 surrogate pair");
+            syntax_err(
+                "codepoint isn't valid low part of utf-16 surrogate pair");
         }
 
         codepoint =
@@ -261,7 +261,8 @@ std::string JsonLoader::load_string() {
             break;
         default:
             if (static_cast<unsigned int>(c) < 0x20) {
-                syntax_err("strings cannot include unescaped control characters");
+                syntax_err(
+                    "strings cannot include unescaped control characters");
                 __builtin_unreachable();
             }
 

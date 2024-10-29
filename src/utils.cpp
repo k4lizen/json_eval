@@ -1,4 +1,5 @@
 #include "utils.hpp"
+
 #include <string>
 
 namespace k4json {

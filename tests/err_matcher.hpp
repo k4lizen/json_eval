@@ -16,12 +16,14 @@ public:
     std::string describe() const override;
     // docs don't say this is needed but doesn't work without it?
     std::string toString() const;
+
 private:
     std::string err_msg;
     int line;
     int position;
 };
 
-JsonErrorMatcher EqualsJError(int line, int position, const std::string& err_msg);
+JsonErrorMatcher EqualsJError(int line, int position,
+                              const std::string& err_msg);
 JsonErrorMatcher EqualsJError(int position, const std::string& err_msg);
 JsonErrorMatcher EqualsJError(const std::string& err_msg);
