@@ -104,10 +104,8 @@ JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
     switch (arg.get_type()) {
     case JsonType::ARRAY:
     case JsonType::OBJECT:
-        res.push_back(Json(static_cast<double>(arg.size())));
-        break;
     case JsonType::STRING:
-        res.push_back(Json(static_cast<double>(arg.get_string().size())));
+        res.push_back(Json(static_cast<double>(arg.size())));
         break;
     default:
         value_err("function size() is only valid for Json arrays, objects and "
@@ -115,6 +113,19 @@ JsonArray JsonExpressionParser::evaluate_size(std::vector<Json>& arguments) {
     }
 
     return res;
+}
+
+// Adds up the total amount of jsons compromising the arguments
+JsonArray JsonExpressionParser::evaluate_nchildren(std::vector<Json>& arguments) {
+    int res = 0;
+
+    for (auto& arg : arguments) {
+        res += arg.nchildren();
+    }
+
+    JsonArray ret;
+    ret.push_back(Json(static_cast<double>(res)));
+    return ret;
 }
 
 // arguments is assumed to have at least one element
@@ -129,6 +140,8 @@ JsonExpressionParser::evaluate_function(FuncType func,
         return evaluate_min(arguments);
     case FuncType::SIZE:
         return evaluate_size(arguments);
+    case FuncType::NCHILDREN:
+        return evaluate_nchildren(arguments);
     }
     assert(0);
 }
@@ -177,6 +190,8 @@ FuncType JsonExpressionParser::string_to_functype(std::string_view sv) {
         return FuncType::MAX;
     } else if (sv == "size") {
         return FuncType::SIZE;
+    } else if (sv == "nchildren") {
+        return FuncType::NCHILDREN;
     } else {
         syntax_err("invalid function name '" + std::string(sv) + "'");
         __builtin_unreachable();

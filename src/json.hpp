@@ -63,7 +63,9 @@ public:
     Json operator[](std::string_view key) const;
     bool obj_contains(std::string_view key) const;
     std::vector<std::string> get_obj_keys() const;
+
     int size() const;
+    int nchildren() const;
 
     // serialize the json object to a string
     std::string to_string() const;

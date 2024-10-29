@@ -52,7 +52,7 @@ The root identifier (`$`) can be ommited, `"abc.efg"` can be used as shorthand f
 
 Everything is an expression. An expression can also be used as a selector `"arr[7 - 3]"` or even `"arr[arr[0]]"`.
 
-Functions aren't selectors, they can be used freely in expressions `"min(4, size(arr))"`. The currently supported functions are `min`, `max` and `size`.
+Functions aren't selectors, they can be used freely in expressions `"min(4, size(arr))"`. The currently supported functions are `min`, `max`, `size` and `nchildren`. The first three do what you'd expect, `nchildren` calculates the total number of (possibly duplicate) Jsons compromising its arguments, recursively. For example, `"nchildren(arr)"` is 5,`"nchildren($, two)"` is 14.
 
 Binary operators are allowed in expressions e.g. `size(arr) + 3`, there are `+`, `-`, `*` and `/`. You can also use brackets `(` and `)` to enforce an order of operations other than left->right (important for expected behaviour of `*` and `/`!).
 

@@ -18,7 +18,8 @@ public:
 enum class FuncType {
     MIN,
     MAX,
-    SIZE
+    SIZE,
+    NCHILDREN
 };
 
 enum class Operator {
@@ -60,6 +61,7 @@ private:
     JsonArray evaluate_max(std::vector<Json>& arguments);
     JsonArray evaluate_min(std::vector<Json>& arguments);
     JsonArray evaluate_size(std::vector<Json>& arguments);
+    JsonArray evaluate_nchildren(std::vector<Json>& arguments);
 
     JsonArray rootlist;
 };

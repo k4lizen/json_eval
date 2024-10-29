@@ -157,21 +157,40 @@ bool Json::obj_contains(std::string_view key) const {
     }
 }
 
-// Returns the number of Jsons inside this one, shallowly
+// Returns the number of elements inside this one, shallowly
 int Json::size() const {
-    if (_is_null) {
+    switch (get_type()) {
+    case JsonType::NULLVAL:
+    case JsonType::BOOL:
+    case JsonType::NUMBER:
         return 0;
-    } else if (std::holds_alternative<bool>(val)) {
-        return 0;
-    } else if (std::holds_alternative<double>(val)) {
-        return 0;
-    } else if (std::holds_alternative<std::string>(val)) {
-        return 0;
-    } else if (std::holds_alternative<JsonArray>(val)) {
+    case JsonType::STRING:
+        return std::get<std::string>(val).size();
+    case JsonType::ARRAY:
         return std::get<JsonArray>(val).size();
-    } else {
+    case JsonType::OBJECT:
         return std::get<JsonObject>(val).size();
+    case JsonType::INVALID:
+        throw JsonTypeErr("asking size() of an invalid Json");
     }
+    assert(0);
+}
+
+// Returns the amount Jsons in this Json, recursively
+int Json::nchildren() const {
+    JsonType type = get_type();
+    int res = 1;
+    if (type == JsonType::ARRAY) {
+        for (auto& x : std::get<JsonArray>(val)) {
+            res += x.nchildren();
+        }
+    } else if (type == JsonType::OBJECT){
+        for (auto& x : std::get<JsonObject>(val)) {
+            res += x.second.nchildren();
+        }
+    }
+
+    return res;
 }
 
 Json Json::from_string(const std::string& str) {
